@@ -1,0 +1,6 @@
+/target
+**/*.rs.bk
+test_run*
+/examples/private_*.rs
+callgrind.*
+/.git.old

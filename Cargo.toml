@@ -1,0 +1,27 @@
+[package]
+name = "hg-git-fast-import"
+version = "0.1.0"
+authors = ["Alexander Korolev <kilork@yandex.ru>"]
+license = "Unlicense OR MIT"
+description = """
+A utility to import single and multiple Mercurial repositories to Git.
+"""
+edition = "2018"
+
+[dependencies]
+log = "0.4"
+env_logger = "0.6"
+regex = "1"
+lazy_static = "1"
+toml = "0.4"
+serde = "1.0"
+serde_derive = "1.0"
+structopt = "0.2"
+
+[dependencies.cpython]
+version = "0.2"
+default-features = false
+features = ["python27-sys"]
+
+[profile.release]
+debug = true
