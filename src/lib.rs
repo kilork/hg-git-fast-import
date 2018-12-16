@@ -512,7 +512,11 @@ pub fn hg2git<P: AsRef<Path>>(
     debug!("mapping_cache: {:?}", mapping_cache);
 
     debug!("Checking saved state...");
-    let mut brmap = HashMap::new();
+    let mut brmap = config
+        .branches
+        .as_ref()
+        .map(|x| x.clone())
+        .unwrap_or_else(|| HashMap::new());
     let mut c: usize = 0;
 
     {
@@ -546,7 +550,9 @@ pub fn hg2git<P: AsRef<Path>>(
     info!("Issued {} commands", c);
     info!("Saving state...");
     target
-        .save_state(RepositorySavedState::OffsetedRevisionSet(vec![max + config.offset.unwrap_or(0)]))
+        .save_state(RepositorySavedState::OffsetedRevisionSet(vec![
+            max + config.offset.unwrap_or(0),
+        ]))
         .unwrap();
 
     target
