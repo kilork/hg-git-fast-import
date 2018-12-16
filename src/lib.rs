@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 
-use log::{debug, error, info, warn};
+use log::{debug, error, info, trace, warn};
 
 use regex::Regex;
 
@@ -277,6 +277,10 @@ impl<'a> MercurialRepo<'a> {
         Ok(manifest)
     }
 
+    fn mark(&self, revision: usize) -> usize {
+        revision + 1 + self.config.offset.unwrap_or(0)
+    }
+
     fn export_commit(
         &self,
         revision: usize,
@@ -300,7 +304,7 @@ impl<'a> MercurialRepo<'a> {
             writeln!(output, "reset refs/heads/{}", branch).unwrap();
         }
         writeln!(output, "commit refs/heads/{}", branch).unwrap();
-        writeln!(output, "mark :{}", revision + 1).unwrap();
+        writeln!(output, "mark :{}", self.mark(revision)).unwrap();
         writeln!(
             output,
             "author {} {} {}",
@@ -327,7 +331,7 @@ impl<'a> MercurialRepo<'a> {
             "full"
         } else {
             let parent = parents[0];
-            writeln!(output, "from :{}", parent + 1).unwrap();
+            writeln!(output, "from :{}", self.mark(parent as usize)).unwrap();
             if parents.len() == 1 {
                 let mut f: Vec<Vec<String>> = repo
                     .call_method(py, "status", (parent, revision), None)?
@@ -340,7 +344,7 @@ impl<'a> MercurialRepo<'a> {
                 removed.append(&mut f[2]);
                 "simple delta"
             } else {
-                writeln!(output, "merge :{}", parents[1] + 1).unwrap();
+                writeln!(output, "merge :{}", self.mark(parents[1] as usize)).unwrap();
                 let (mut a, mut c, mut r) = self.get_filechanges(&parents, &man)?;
                 added.append(&mut a);
                 changed.append(&mut c);
@@ -349,11 +353,12 @@ impl<'a> MercurialRepo<'a> {
             }
         };
         info!(
-            "{}: Exporting {} revision {}/{} with {}/{}/{} added/changed/removed files",
+            "{}: Exporting {} revision {}/{} mark {} with {}/{}/{} added/changed/removed files",
             branch,
             rev_type,
-            revision + 1,
+            revision,
             max,
+            self.mark(revision),
             added.len(),
             changed.len(),
             removed.len()
@@ -372,7 +377,7 @@ impl<'a> MercurialRepo<'a> {
                 branch, branch
             );
             writeln!(output, "reset refs/tags/archive/{}", branch).unwrap();
-            writeln!(output, "from :{}\n", revision + 1).unwrap();
+            writeln!(output, "from :{}\n", self.mark(revision)).unwrap();
 
             info!("Closing branch: {}", branch);
             writeln!(output, "reset refs/heads/{}", branch).unwrap();
@@ -397,7 +402,7 @@ impl<'a> MercurialRepo<'a> {
         if is_first {
             writeln!(output, "from refs/notes/hg^0").unwrap();
         }
-        writeln!(output, "N inline :{}", revision + 1).unwrap();
+        writeln!(output, "N inline :{}", self.mark(revision)).unwrap();
 
         let ctx = self.revsymbol(revision)?;
         let hg_hash: String = ctx.call_method(py, "hex", NoArgs, None)?.extract(py)?;
@@ -429,7 +434,7 @@ impl<'a> MercurialRepo<'a> {
             let (_, node_key) = convert_pystring_to_bytes(py, &node_str);
             if let Some(rev) = mapping_cache.get(node_key) {
                 writeln!(output, "reset refs/tags/{}", tag).unwrap();
-                writeln!(output, "from :{}", rev + 1).unwrap();
+                writeln!(output, "from :{}", self.mark(*rev)).unwrap();
                 writeln!(output).unwrap();
                 count += 1;
             } else {
@@ -515,7 +520,9 @@ pub fn hg2git<P: AsRef<Path>>(
 
         let min = if let Some(saved_state) = saved_state {
             match saved_state {
-                RepositorySavedState::OffsetedRevisionSet(revs) => *revs.first().unwrap(),
+                RepositorySavedState::OffsetedRevisionSet(revs) => {
+                    *revs.first().unwrap() - repo.config.offset.unwrap_or(0)
+                }
             }
         } else {
             0
@@ -539,7 +546,7 @@ pub fn hg2git<P: AsRef<Path>>(
     info!("Issued {} commands", c);
     info!("Saving state...");
     target
-        .save_state(RepositorySavedState::OffsetedRevisionSet(vec![max]))
+        .save_state(RepositorySavedState::OffsetedRevisionSet(vec![max + config.offset.unwrap_or(0)]))
         .unwrap();
 
     target
@@ -667,7 +674,8 @@ fn get_author(logmessage: &str, committer: &str) -> String {
     committer.into()
 }
 
-fn sanitize_name(name: &str, _what: &str) -> String {
+fn sanitize_name(name: &str, what: &str) -> String {
+    trace!("Sanitize {} '{}'", what, name);
     name.into()
 
     //TODO: git-check-ref-format
