@@ -25,7 +25,7 @@ impl<'a> TargetRepository for StdoutTargetRepository<'a> {
     ) -> Result<(&mut Write, Option<RepositorySavedState>), TargetRepositoryError> {
         Ok((&mut self.stdoutlock, None))
     }
-    fn finish(&mut self, _: Option<&str>) -> Result<(), TargetRepositoryError> {
+    fn finish(&mut self) -> Result<(), TargetRepositoryError> {
         Ok(())
     }
 }
@@ -125,7 +125,7 @@ impl TargetRepository for GitTargetRepository {
         ))
     }
 
-    fn finish(&mut self, verify: Option<&str>) -> Result<(), TargetRepositoryError> {
+    fn finish(&mut self) -> Result<(), TargetRepositoryError> {
         let path = Path::new(&self.path);
         info!("Waiting for Git fast-import to finish");
         let status = self.fast_import_cmd.as_mut().unwrap().wait()?;
@@ -167,34 +167,44 @@ impl TargetRepository for GitTargetRepository {
         } else {
             panic!("Cannot reset Git repo.")
         };
-        if status.success() {
-            if let Some(verified_repo) = verify {
-                info!("Verifying...");
-                let status = Command::new("diff")
-                    .args(&[
-                        "-ur",
-                        "--exclude=.hg",
-                        "--exclude=.idea",
-                        "--exclude=.git",
-                        "--exclude=*.iml",
-                        "--exclude=target",
-                        "--exclude=.hgtags",
-                        verified_repo,
-                        self.path.to_str().unwrap(),
-                    ])
-                    .spawn()
-                    .unwrap()
-                    .wait()
-                    .unwrap();
-                if status.success() {
-                    info!("OK")
-                } else {
-                    panic!("Verify failed.");
-                }
-            }
-        } else {
+        if !status.success() {
             panic!("Cannot checkout HEAD revision.");
         };
+        Ok(())
+    }
+
+    fn verify(
+        &self,
+        verified_repo: &str,
+        subfolder: Option<&str>,
+    ) -> Result<(), TargetRepositoryError> {
+        info!("Verifying...");
+
+        let path: String = subfolder.map_or_else(
+            || self.path.to_str().unwrap().into(),
+            |subfolder| self.path.join(subfolder).to_str().unwrap().into(),
+        );
+        let status = Command::new("diff")
+            .args(&[
+                "-ur",
+                "--exclude=.hg",
+                "--exclude=.idea",
+                "--exclude=.git",
+                "--exclude=*.iml",
+                "--exclude=target",
+                "--exclude=.hgtags",
+                verified_repo,
+                &path,
+            ])
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+        if status.success() {
+            info!("OK")
+        } else {
+            panic!("Verify failed.");
+        }
         Ok(())
     }
 

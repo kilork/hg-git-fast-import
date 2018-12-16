@@ -12,6 +12,10 @@ pub struct RepositoryConfig {
     pub branches: Option<HashMap<String, String>>,
     pub allow_unnamed_heads: bool,
     pub limit_high: Option<usize>,
+    pub path_prefix: Option<String>,
+    pub branch_prefix: Option<String>,
+    #[serde(default)]
+    pub force_branch_default_prefix: bool,
 }
 
 #[derive(Deserialize, Serialize)]

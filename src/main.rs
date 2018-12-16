@@ -49,6 +49,9 @@ fn main() {
                     offset: Some(0),
                     allow_unnamed_heads: false,
                     limit_high,
+                    path_prefix: None,
+                    branch_prefix: None,
+                    force_branch_default_prefix: false,
                 },
                 |x| {
                     info!("Loading config");

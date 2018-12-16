@@ -54,7 +54,15 @@ pub trait TargetRepository {
         &mut self,
     ) -> Result<(&mut Write, Option<config::RepositorySavedState>), TargetRepositoryError>;
 
-    fn finish(&mut self, verify: Option<&str>) -> Result<(), TargetRepositoryError>;
+    fn finish(&mut self) -> Result<(), TargetRepositoryError>;
+
+    fn verify(
+        &self,
+        _verified_repo: &str,
+        _subfolder: Option<&str>,
+    ) -> Result<(), TargetRepositoryError> {
+        Ok(())
+    }
 
     fn save_state(&self, _state: RepositorySavedState) -> std::io::Result<()> {
         Ok(())
@@ -366,10 +374,10 @@ impl<'a> MercurialRepo<'a> {
 
         removed
             .iter()
-            .map(strip_leading_slash)
+            .map(|x| strip_leading_slash(self.config.path_prefix.as_ref(), x))
             .for_each(|x| writeln!(output, "D {}", x).unwrap());
-        export_file_contents(py, &ctx, &man, &added, output)?;
-        export_file_contents(py, &ctx, &man, &changed, output)?;
+        export_file_contents(py, &ctx, &man, &added, self.config, output)?;
+        export_file_contents(py, &ctx, &man, &changed, self.config, output)?;
         writeln!(output).unwrap();
         if is_closed && !env.no_clean_closed_branches {
             info!(
@@ -555,13 +563,17 @@ pub fn hg2git<P: AsRef<Path>>(
         ]))
         .unwrap();
 
-    target
-        .finish(if verify {
-            Some(repourl.as_ref().to_str().unwrap())
-        } else {
-            None
-        })
-        .unwrap();
+    target.finish().unwrap();
+
+    if verify {
+        target
+            .verify(
+                repourl.as_ref().to_str().unwrap(),
+                config.path_prefix.as_ref().map(|x| &x[..]),
+            )
+            .unwrap();
+    }
+
     Ok(())
 }
 
@@ -578,6 +590,7 @@ fn export_file_contents(
     ctx: &PyObject,
     manifest: &PyObject,
     files: &[String],
+    config: &config::RepositoryConfig,
     output: &mut Write,
 ) -> PyResult<()> {
     for file in files {
@@ -592,7 +605,7 @@ fn export_file_contents(
             output,
             "M {} inline {}",
             gitmode(&get_flags(py, manifest, file)?),
-            strip_leading_slash(file)
+            strip_leading_slash(config.path_prefix.as_ref(), file)
         )
         .unwrap();
         let (data_str_len, data_str_bytes) = convert_pystring_to_bytes(py, &data_str);
@@ -603,8 +616,8 @@ fn export_file_contents(
     Ok(())
 }
 
-fn strip_leading_slash(x: &String) -> String {
-    x.to_string()
+fn strip_leading_slash(prefix: Option<&String>, x: &String) -> String {
+    prefix.map_or_else(|| x.to_string(), |p| format!("{}/{}", p, x))
 }
 
 fn get_keys(py: Python, d: &PyObject) -> PyResult<Vec<String>> {
