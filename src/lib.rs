@@ -300,9 +300,17 @@ impl<'a> MercurialRepo<'a> {
         let (py, env, repo) = (self.toolkit.py, self.toolkit.env, &self.repo);
         let (_, user, (time, timezone), desc, branch, is_closed) = self.changeset(revision)?;
 
-        let branch = brmap
-            .entry(branch.clone())
-            .or_insert_with(|| sanitize_name(&branch, "branch"));
+        let branch = brmap.entry(branch.clone()).or_insert_with(|| {
+            sanitize_name(
+                &branch,
+                if branch != "master" || self.config.prefix_default_branch {
+                    self.config.branch_prefix.as_ref()
+                } else {
+                    None
+                },
+                "branch",
+            )
+        });
 
         let parents = self.get_parents(revision)?;
 
@@ -433,7 +441,7 @@ impl<'a> MercurialRepo<'a> {
             .extract(py)?;
 
         for (tag, node) in l {
-            let tag = sanitize_name(&tag, "tag");
+            let tag = sanitize_name(&tag, self.config.tag_prefix.as_ref(), "tag");
             if tag == "tip" {
                 continue;
             }
@@ -693,9 +701,9 @@ fn get_author(logmessage: &str, committer: &str) -> String {
     committer.into()
 }
 
-fn sanitize_name(name: &str, what: &str) -> String {
+fn sanitize_name(name: &str, prefix: Option<&String>, what: &str) -> String {
     trace!("Sanitize {} '{}'", what, name);
-    name.into()
+    prefix.map_or_else(|| name.into(), |p| format!("{}{}", p, name))
 
     //TODO: git-check-ref-format
 }

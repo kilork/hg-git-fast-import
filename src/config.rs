@@ -14,8 +14,9 @@ pub struct RepositoryConfig {
     pub limit_high: Option<usize>,
     pub path_prefix: Option<String>,
     pub branch_prefix: Option<String>,
+    pub tag_prefix: Option<String>,
     #[serde(default)]
-    pub force_branch_default_prefix: bool,
+    pub prefix_default_branch: bool,
 }
 
 #[derive(Deserialize, Serialize)]

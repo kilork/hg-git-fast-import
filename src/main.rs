@@ -51,7 +51,8 @@ fn main() {
                     limit_high,
                     path_prefix: None,
                     branch_prefix: None,
-                    force_branch_default_prefix: false,
+                    tag_prefix: None,
+                    prefix_default_branch: false,
                 },
                 |x| {
                     info!("Loading config");
