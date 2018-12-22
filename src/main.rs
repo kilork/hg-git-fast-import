@@ -7,7 +7,7 @@ use structopt::StructOpt;
 
 use hg_git_fast_import::config::{Environment, RepositoryConfig};
 use hg_git_fast_import::git::{GitTargetRepository, StdoutTargetRepository};
-use hg_git_fast_import::{hg2git, multi::multi2git, read_file};
+use hg_git_fast_import::{single::hg2git, multi::multi2git, read_file};
 
 use env_logger::{Builder, Env};
 mod cli;

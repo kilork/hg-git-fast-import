@@ -9,11 +9,11 @@ use cpython::{
 use super::{config, TargetRepository};
 
 pub fn multi2git(
-    export_notes: bool,
-    verify: bool,
-    target: &mut TargetRepository,
-    env: &config::Environment,
-    config: &config::MultiConfig,
+    _export_notes: bool,
+    _verify: bool,
+    _target: &mut TargetRepository,
+    _env: &config::Environment,
+    _config: &config::MultiConfig,
 ) -> PyResult<()> {
     Ok(())
 }
