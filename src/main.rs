@@ -1,4 +1,5 @@
 use std::io;
+use std::path::PathBuf;
 
 use log::{info, trace};
 
@@ -6,9 +7,9 @@ use structopt::StructOpt;
 
 use hg_git_fast_import::config::{Environment, RepositoryConfig};
 use hg_git_fast_import::git::{GitTargetRepository, StdoutTargetRepository};
-use hg_git_fast_import::{hg2git, read_file};
+use hg_git_fast_import::{hg2git, multi::multi2git, read_file};
 
-use env_logger::{Builder,Env};
+use env_logger::{Builder, Env};
 mod cli;
 
 use self::cli::Cli::{self, *};
@@ -31,40 +32,18 @@ fn main() {
             verify,
             limit_high,
         } => {
-            let env = Environment {
-                no_clean_closed_branches,
-                authors: authors.map(|x| {
-                    info!("Loading authors");
-                    let authors_str = read_file(&x).unwrap();
-                    let authors = toml::from_str(&authors_str).unwrap();
-                    info!("Authors list loaded");
-                    authors
-                }),
-            };
+            let env = load_environment(&authors, no_clean_closed_branches);
 
-            let repository_config = config.map_or_else(
-                || RepositoryConfig {
-                    authors: None,
-                    branches: None,
-                    offset: Some(0),
-                    allow_unnamed_heads: false,
-                    limit_high,
-                    path_prefix: None,
-                    branch_prefix: None,
-                    tag_prefix: None,
-                    prefix_default_branch: false,
-                },
-                |x| {
-                    info!("Loading config");
-                    let config_str = read_file(&x).unwrap();
-                    let mut config: RepositoryConfig = toml::from_str(&config_str).unwrap();
-                    info!("Config loaded");
-                    if limit_high.is_some() {
-                        config.limit_high = limit_high;
-                    }
-                    config
-                },
-            );
+            let repository_config = config.map_or_else(RepositoryConfig::default, |x| {
+                info!("Loading config");
+                let config_str = read_file(&x).unwrap();
+                let mut config: RepositoryConfig = toml::from_str(&config_str).unwrap();
+                info!("Config loaded");
+                if limit_high.is_some() {
+                    config.limit_high = limit_high;
+                }
+                config
+            });
             if let Some(git_repo) = git_repo {
                 let mut git_target_repository = GitTargetRepository::open(git_repo);
                 hg2git(
@@ -91,6 +70,37 @@ fn main() {
                 .unwrap();
             }
         }
-        _ => (),
+        Multi {
+            git_repo,
+            config,
+            authors,
+            no_clean_closed_branches,
+            verify,
+        } => {
+            let env = load_environment(&authors, no_clean_closed_branches);
+            info!("Loading config");
+            let config_str = read_file(&config).unwrap();
+            let config = toml::from_str(&config_str).unwrap();
+            info!("Config loaded");
+            if let Some(git_repo) = git_repo {
+                let mut git_target_repository = GitTargetRepository::open(git_repo);
+                multi2git(false, verify, &mut git_target_repository, &env, &config).unwrap();
+            } else {
+                unimplemented!();
+            }
+        }
+    }
+}
+
+fn load_environment(authors: &Option<PathBuf>, no_clean_closed_branches: bool) -> Environment {
+    Environment {
+        no_clean_closed_branches,
+        authors: authors.as_ref().map(|x| {
+            info!("Loading authors");
+            let authors_str = read_file(&x).unwrap();
+            let authors = toml::from_str(&authors_str).unwrap();
+            info!("Authors list loaded");
+            authors
+        }),
     }
 }

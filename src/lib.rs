@@ -22,6 +22,7 @@ use cpython::{
 
 pub mod config;
 pub mod git;
+pub mod multi;
 
 use self::config::RepositorySavedState;
 

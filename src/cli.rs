@@ -43,7 +43,7 @@ pub enum Cli {
         /// Do not clean closed Mercurial branches.
         #[structopt(name = "no-clean-closed-branches", long)]
         no_clean_closed_branches: bool,
-        /// Compares resulting Git repo with Mercurial.
+        /// Compares resulting Git repo with Mercurial (only final state with subfolders).
         #[structopt(long)]
         verify: bool,
     },
