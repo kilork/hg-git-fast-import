@@ -1,13 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use log::{debug, error, info, trace, warn};
+use log::{debug, info};
 use std::path::Path;
-use std::path::PathBuf;
 
-use cpython::{
-    exc, GILGuard, NoArgs, ObjectProtocol, PyDict, PyErr, PyList, PyModule, PyObject, PyResult,
-    PyString, PyStringData, Python,
-};
+use cpython::{PyResult, Python};
 
 use super::{config, MercurialToolkit, RepositorySavedState, TargetRepository};
 
@@ -17,21 +13,21 @@ pub fn hg2git<P: AsRef<Path>>(
     verify: bool,
     target: &mut TargetRepository,
     env: &config::Environment,
-    config: &config::RepositoryConfig,
+    repository_config: &config::RepositoryConfig,
 ) -> PyResult<()> {
     let gil = Python::acquire_gil();
 
     let mercurial = MercurialToolkit::new(&gil, env)?;
 
-    let repo = mercurial.open_repo(&repourl, config)?;
+    let repo = mercurial.open_repo(&repourl, repository_config)?;
 
-    if !repo.verify_heads(config.allow_unnamed_heads)? {
+    if !repo.verify_heads(repository_config.allow_unnamed_heads)? {
         return mercurial.error("Verify heads failed");
     };
 
     let tip = repo.changelog_len()?;
 
-    let max = if let Some(limit_high) = config.limit_high {
+    let max = if let Some(limit_high) = repository_config.limit_high {
         tip.min(limit_high)
     } else {
         tip
@@ -45,7 +41,7 @@ pub fn hg2git<P: AsRef<Path>>(
     debug!("mapping_cache: {:?}", mapping_cache);
 
     debug!("Checking saved state...");
-    let mut brmap = config
+    let mut brmap = repository_config
         .branches
         .as_ref()
         .map(|x| x.clone())
@@ -84,7 +80,7 @@ pub fn hg2git<P: AsRef<Path>>(
     info!("Saving state...");
     target
         .save_state(RepositorySavedState::OffsetedRevisionSet(vec![
-            max + config.offset.unwrap_or(0),
+            max + repository_config.offset.unwrap_or(0),
         ]))
         .unwrap();
 
@@ -94,7 +90,7 @@ pub fn hg2git<P: AsRef<Path>>(
         target
             .verify(
                 repourl.as_ref().to_str().unwrap(),
-                config.path_prefix.as_ref().map(|x| &x[..]),
+                repository_config.path_prefix.as_ref().map(|x| &x[..]),
             )
             .unwrap();
     }

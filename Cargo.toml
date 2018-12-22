@@ -6,6 +6,11 @@ license = "Unlicense OR MIT"
 description = """
 A utility to import single and multiple Mercurial repositories to Git.
 """
+readme = "README.md"
+homepage = "https://github.com/kilork/hg-git-fast-import"
+repository = "https://github.com/kilork/hg-git-fast-import"
+keywords = ["cli", "hg", "git", "mercurial", "convert"]
+categories = ["command-line-utilities"]
 edition = "2018"
 
 [dependencies]
