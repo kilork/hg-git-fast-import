@@ -80,11 +80,11 @@ fn main() {
             let env = load_environment(&authors, no_clean_closed_branches);
             info!("Loading config");
             let config_str = read_file(&config).unwrap();
-            let config = toml::from_str(&config_str).unwrap();
+            let multi_config = toml::from_str(&config_str).unwrap();
             info!("Config loaded");
             if let Some(git_repo) = git_repo {
                 let mut git_target_repository = GitTargetRepository::open(git_repo);
-                multi2git(false, verify, &mut git_target_repository, &env, &config).unwrap();
+                multi2git(false, verify, &mut git_target_repository, &env, &config, &multi_config).unwrap();
             } else {
                 unimplemented!();
             }
