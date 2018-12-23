@@ -1,4 +1,4 @@
-# **hg-git-fast-import** - **mercurial** to **git** converter using **git fast-import** and written in **Rust Language**
+# hg-git-fast-import - Mercurial to Git converter using git fast-import with multi repository import support
 
 ## Legal
 
@@ -70,6 +70,29 @@ Import of single repository:
 - Git 2.19
 - Mercurial 4.8
 - Python 2.7
+
+## Docker support
+
+To setup all dependencies can be a tricky task - it is possible to use [```docker```](https://www.docker.com/) for running ```hg-git-fast-import```.
+
+### Docker installation
+
+    git clone https://github.com/kilork/hg-git-fast-import.git
+    cd hg-git-fast-import/docker
+    ./build.sh
+
+### Docker running
+
+    docker run -it --rm kilork/hg-git-fast-import hg-git-fast-import --help
+
+To mount current directory with repositories and run ```hg-git-fast-import``` command with docker one can use wrapper ```hg-git-fast-import/docker/run.sh```:
+
+    cd hg-git-fast-import/docker
+    ./run.sh
+
+By default this will mount current directory to ```/repositories``` dir inside docker container. This can be overriden by usage of env variable:
+
+    HG_GIT_FAST_IMPORT_VOLUME=~/sandbox:/sandbox ./run.sh single --verify /sandbox/source_hg /sandbox/target_git
 
 ## Implementation details
 
