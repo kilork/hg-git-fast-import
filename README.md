@@ -92,7 +92,7 @@ To mount current directory with repositories and run ```hg-git-fast-import``` co
 
 By default this will mount current directory to ```/repositories``` dir inside docker container. This can be overriden by usage of env variable:
 
-    HG_GIT_FAST_IMPORT_VOLUME=~/sandbox:/sandbox ./run.sh single --verify /sandbox/source_hg /sandbox/target_git
+    HG_GIT_FAST_IMPORT_VOLUME=~/sandbox:/sandbox ./run.sh single /sandbox/source_hg /sandbox/target_git
 
 ## Implementation details
 
