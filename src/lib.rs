@@ -24,6 +24,7 @@ pub mod config;
 pub mod git;
 pub mod multi;
 pub mod single;
+mod collections;
 
 use self::config::RepositorySavedState;
 

@@ -74,7 +74,7 @@ mod tests {
     }
 
     #[test]
-    fn multiconfig_saved_to_toml() {
+    fn multiconfig_read_from_toml() {
         let src = r#"[[repositories]]
 path = "001_hg"
 
