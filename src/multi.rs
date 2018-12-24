@@ -60,7 +60,6 @@ pub fn multi2git<P: AsRef<Path>>(
     }) {
         return mercurial.error("Verify heads failed");
     }
-<<<<<<< HEAD
 
     let mut all_revisions: Vec<Vec<(usize, usize, usize)>> = Vec::new();
 
@@ -134,8 +133,5 @@ pub fn multi2git<P: AsRef<Path>>(
 
     target.finish().unwrap();
 
-=======
-    info!("Ok");
->>>>>>> c149ec30805c219b63fa9f157afb88746ae2279d
     Ok(())
 }
