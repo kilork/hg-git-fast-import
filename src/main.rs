@@ -48,7 +48,6 @@ fn main() {
                 let mut git_target_repository = GitTargetRepository::open(git_repo);
                 hg2git(
                     hg_repo,
-                    false,
                     verify,
                     &mut git_target_repository,
                     &env,
@@ -61,7 +60,6 @@ fn main() {
                 let mut stdout_target = StdoutTargetRepository::from(stdoutlock);
                 hg2git(
                     hg_repo,
-                    false,
                     verify,
                     &mut stdout_target,
                     &env,

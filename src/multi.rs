@@ -1,24 +1,19 @@
 use std::collections::HashMap;
+use std::ops::Range;
 use std::path::Path;
 use std::path::PathBuf;
+use std::rc::Rc;
 
 use log::{debug, info};
 
-use cpython::{
-    exc, GILGuard, NoArgs, ObjectProtocol, PyDict, PyErr, PyList, PyModule, PyObject, PyResult,
-    PyString, PyStringData, Python,
-};
-
-use super::{
-    collections::conditional_multi_iter, config, MercurialRepo, MercurialToolkit, TargetRepository,
-};
+use super::{collections::conditional_multi_iter, config, MercurialRepo, TargetRepository};
+use crate::error::ErrorKind;
+use hg_parser::{Changeset, ChangesetIter};
 
 struct ImportingRepository<'a> {
     min: usize,
     max: usize,
-    mapping_cache: HashMap<Vec<u8>, usize>,
     brmap: HashMap<String, String>,
-    repo: MercurialRepo<'a>,
     path_config: &'a config::PathRepositoryConfig,
 }
 
@@ -29,11 +24,7 @@ pub fn multi2git<P: AsRef<Path>>(
     env: &config::Environment,
     config: P,
     multi_config: &config::MultiConfig,
-) -> PyResult<()> {
-    let gil = Python::acquire_gil();
-
-    let mercurial = MercurialToolkit::new(&gil, env)?;
-
+) -> Result<(), ErrorKind> {
     let config_path = config.as_ref().parent();
 
     let repositories: Vec<_> = multi_config
@@ -48,7 +39,7 @@ pub fn multi2git<P: AsRef<Path>>(
                     .unwrap_or(x.path.clone())
             };
 
-            (x, mercurial.open_repo(&path, &x.config).unwrap())
+            (x, MercurialRepo::open(&path, &x.config, env).unwrap())
         })
         .collect();
 
@@ -58,16 +49,16 @@ pub fn multi2git<P: AsRef<Path>>(
             .verify_heads(path_config.config.allow_unnamed_heads)
             .unwrap()
     }) {
-        return mercurial.error("Verify heads failed");
+        return Err(ErrorKind::VerifyFailure("Verify heads failed".into()));
     }
 
-    let mut all_revisions: Vec<Vec<(usize, usize, usize)>> = Vec::new();
+    let mut all_revisions = Vec::new();
 
     info!("Analyzing revision log");
     info!("Checking revision log to create single list of revisions in historical order");
 
-    let mut repositories: Vec<_> = repositories
-        .into_iter()
+    let mut importing_repositories: Vec<_> = repositories
+        .iter()
         .enumerate()
         .map(|(index, (path_config, repo))| {
             let tip = repo.changelog_len().unwrap();
@@ -78,14 +69,7 @@ pub fn multi2git<P: AsRef<Path>>(
                 tip
             };
 
-            let mut revisions = Vec::new();
-            let mut mapping_cache = HashMap::new();
-            for rev in 0..max {
-                let (revnode, _, (time, _), _, _, _) = repo.changeset(rev).unwrap();
-                mapping_cache.insert(revnode, rev);
-                revisions.push((time, index, rev));
-            }
-            all_revisions.push(revisions);
+            all_revisions.push(ChangesetIterWrapper::new(repo.range(0..max), index));
 
             let brmap = path_config
                 .config
@@ -97,30 +81,29 @@ pub fn multi2git<P: AsRef<Path>>(
             let importing_repository = ImportingRepository {
                 min: 0,
                 max,
-                mapping_cache,
                 brmap,
                 path_config,
-                repo,
             };
             importing_repository
         })
         .collect();
 
     let mut c: usize = 0;
-    let all_revisions_iter = conditional_multi_iter(
-        &all_revisions,
-        |x| x.iter().filter_map(|x| x.map(|x| x.0)).min(),
-        |x, y| y == &x.map(|x| x.0),
+    let mut all_revisions_iter = conditional_multi_iter(
+        all_revisions,
+        |x| x.iter().filter_map(|x| x.map(|x| x.0.header.time)).min(),
+        |x, y| y == &x.map(|x| x.0.header.time),
     );
     {
         let (output, saved_state) = target.init().unwrap();
 
         info!("Exporting commits");
 
-        for &(_, index, rev) in all_revisions_iter {
-            let importing_repository = &mut repositories[index];
-            c = importing_repository.repo.export_commit(
-                rev,
+        for (ref mut changelog, repo_index) in &mut all_revisions_iter {
+            let importing_repository = &mut importing_repositories[repo_index];
+            let (_, repo) = &repositories[repo_index];
+            c = repo.export_commit(
+                changelog,
                 importing_repository.max,
                 c,
                 &mut importing_repository.brmap,
@@ -134,4 +117,25 @@ pub fn multi2git<P: AsRef<Path>>(
     target.finish().unwrap();
 
     Ok(())
+}
+
+struct ChangesetIterWrapper<'a> {
+    repo_index: usize,
+    changeset_iter: ChangesetIter<'a>,
+}
+
+impl<'a> ChangesetIterWrapper<'a> {
+    fn new(changeset_iter: ChangesetIter<'a>, repo_index: usize) -> Self {
+        Self {
+            repo_index,
+            changeset_iter,
+        }
+    }
+}
+impl<'a> Iterator for ChangesetIterWrapper<'a> {
+    type Item = (Changeset, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.changeset_iter.next().map(|x| (x, self.repo_index))
+    }
 }

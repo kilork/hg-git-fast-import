@@ -1,11 +1,11 @@
 use lazy_static::lazy_static;
+use std::ops::Range;
 
 use log::{debug, error, info, trace, warn};
 
 use regex::Regex;
 
-use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{
     self,
@@ -15,18 +15,20 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::ExitStatus;
 
-use cpython::{
-    exc, GILGuard, NoArgs, ObjectProtocol, PyDict, PyErr, PyList, PyModule, PyObject, PyResult,
-    PyString, PyStringData, Python,
-};
-
+mod collections;
 pub mod config;
+pub mod error;
 pub mod git;
 pub mod multi;
 pub mod single;
-mod collections;
 
 use self::config::RepositorySavedState;
+pub use error::ErrorKind;
+
+use hg_parser::{
+    file_content, Changeset, ChangesetIter, FileType, ManifestEntryDetails, MercurialRepository, Revision,
+    RevisionRange,
+};
 
 pub fn read_file(filename: &PathBuf) -> io::Result<String> {
     let mut file = File::open(filename)?;
@@ -76,122 +78,31 @@ pub trait TargetRepository {
     }
 }
 
-struct MercurialToolkit<'a> {
-    py: Python<'a>,
-    _mercurial: PyModule,
-    mercurial_hg: PyModule,
-    mercurial_node: PyModule,
-    mercurial_scmutil: PyModule,
-    ui: PyObject,
+struct MercurialRepo<'a> {
+    inner: MercurialRepository,
+    config: &'a config::RepositoryConfig,
     env: &'a config::Environment,
 }
 
-type Changeset = (Vec<u8>, String, (usize, String), String, String, bool);
-
-struct MercurialRepo<'a> {
-    toolkit: &'a MercurialToolkit<'a>,
-    repo: PyObject,
-    changelog: PyObject,
-    config: &'a config::RepositoryConfig,
-    changeset_cache: RefCell<HashMap<usize, Changeset>>,
-}
-
-impl<'a> MercurialToolkit<'a> {
-    fn new(gil: &'a GILGuard, env: &'a config::Environment) -> PyResult<Self> {
-        let py = gil.python();
-        let _mercurial = py.import("mercurial")?;
-        let mercurial_ui = py.import("mercurial.ui")?;
-        let mercurial_hg = py.import("mercurial.hg")?;
-        let mercurial_node = py.import("mercurial.node")?;
-        let mercurial_scmutil = py.import("mercurial.scmutil")?;
-        let ui = mercurial_ui.call(py, "ui", NoArgs, None)?;
-        ui.call_method(py, "setconfig", ("ui", "interactive", false), None)?;
+impl<'a> MercurialRepo<'a> {
+    pub fn open<P: AsRef<Path>>(
+        root_path: P,
+        config: &'a config::RepositoryConfig,
+        env: &'a config::Environment,
+    ) -> Result<MercurialRepo<'a>, ErrorKind> {
         Ok(Self {
-            py,
-            _mercurial,
-            mercurial_hg,
-            mercurial_node,
-            mercurial_scmutil,
-            ui,
+            inner: MercurialRepository::open(root_path)?,
+            config,
             env,
         })
     }
 
-    fn open_repo<P: AsRef<Path>>(
-        &self,
-        url: P,
-        config: &'a config::RepositoryConfig,
-    ) -> PyResult<MercurialRepo> {
-        let py = self.py;
-        let repo =
-            self.mercurial_hg
-                .call(py, "repository", (&self.ui, url.as_ref().to_str()), None)?;
-
-        let changelog = repo.getattr(py, "changelog")?;
-        Ok(MercurialRepo {
-            toolkit: self,
-            repo,
-            changelog,
-            config,
-            changeset_cache: RefCell::new(HashMap::new()),
-        })
-    }
-
-    fn error<T>(&self, error_text: &str) -> PyResult<T> {
-        Err(PyErr::new::<exc::Exception, _>(self.py, error_text))
-    }
-}
-
-impl<'a> MercurialRepo<'a> {
-    fn verify_heads(&self, allow_unnamed_heads: bool) -> PyResult<bool> {
-        let (py, repo, changelog) = (self.toolkit.py, &self.repo, &self.changelog);
-        let branchmap: PyDict = repo
-            .call_method(py, "branchmap", NoArgs, None)?
-            .extract(py)?;
-
-        let branchmap: HashMap<String, PyList> = branchmap
-            .items(py)
-            .iter()
-            .map(|(k, v)| (k.extract(py).unwrap(), v.extract(py).unwrap()))
-            .collect();
-
-        let mut branches = HashMap::new();
-        for (bn, heads) in &branchmap {
-            let tip = branchtip(py, changelog, heads)?;
-            branches.insert(bn, tip);
-        }
-        debug!("branches: {:?}", branches.keys());
-
-        debug!("branchmap len: {:?}", branchmap.len());
-
-        // TODO: all code above is doing nothing if we do not have cache, should be removed
-        info!("Verify that branch has exactly one head");
-        let heads: PyList = repo.call_method(py, "heads", NoArgs, None)?.extract(py)?;
-        let mut t = HashSet::new();
-        for h in heads.iter(py) {
-            let rev: usize = changelog.call_method(py, "rev", (h,), None)?.extract(py)?;
-            let (_, _, _, _, branch, _) = self.changeset(rev)?;
-            if t.contains(&branch) {
-                if allow_unnamed_heads {
-                    warn!(
-                        "repository has at least one unnamed head: hg r{}, branch: {}",
-                        rev, branch
-                    );
-                } else {
-                    error!(
-                        "repository has at least one unnamed head: hg r{}, branch: {}",
-                        rev, branch
-                    );
-                    return Ok(false);
-                }
-            }
-            t.insert(branch);
-        }
+    fn verify_heads(&self, allow_unnamed_heads: bool) -> Result<bool, ErrorKind> {
         Ok(true)
     }
 
-    fn changelog_len(&self) -> PyResult<usize> {
-        self.changelog.len(self.toolkit.py)
+    fn changelog_len(&self) -> Result<usize, ErrorKind> {
+        Ok(self.inner.last_rev().0 as usize)
     }
 
     fn fixup_user(&self, user: &str) -> String {
@@ -201,7 +112,7 @@ impl<'a> MercurialRepo<'a> {
             }
         }
 
-        if let Some(ref authors) = self.toolkit.env.authors {
+        if let Some(ref authors) = self.env.authors {
             if let Some(remap) = authors.get(user) {
                 return remap.clone();
             }
@@ -217,91 +128,45 @@ impl<'a> MercurialRepo<'a> {
                 caps.get(2).unwrap().as_str(),
             )
         } else {
-            (&user[..], "<unknown@localhost>")
-            // panic!("Wrong user: {}", user);
+            // (&user[..], "<unknown@localhost>")
+            panic!("Wrong user: {}", user);
         };
 
         format!("{} {}", name, email)
     }
 
-    fn revsymbol(&self, revision: usize) -> PyResult<PyObject> {
-        let (py, repo, scmutil) = (self.toolkit.py, &self.repo, &self.toolkit.mercurial_scmutil);
-        let revsymbol = scmutil.call(py, "revsymbol", (repo, revision.to_string()), None)?;
-        Ok(revsymbol)
+    fn mark<R: Into<usize>>(&self, revision: R) -> usize {
+        revision.into() + 1 + self.config.offset.unwrap_or(0)
     }
 
-    fn changeset(&self, revision: usize) -> PyResult<Changeset> {
-        let (py, changelog, scmutil) = (
-            self.toolkit.py,
-            &self.changelog,
-            &self.toolkit.mercurial_scmutil,
-        );
-
-        debug!("get changeset for revision: {:?}", revision);
-
-        if let Some(result) = self.changeset_cache.borrow().get(&revision) {
-            return Ok(result.clone());
-        }
-
-        let node: PyString = {
-            let revsymbol = self.revsymbol(revision)?;
-            scmutil
-                .call(py, "binnode", (revsymbol,), None)?
-                .extract(py)?
-        };
-
-        let revision_read = changelog.call_method(py, "read", (revision,), None)?;
-        let time_data = revision_read.get_item(py, 2)?;
-        let (user, time, timezone, desc, extra) = (
-            revision_read.get_item(py, 1)?,
-            time_data.get_item(py, 0)?,
-            time_data.get_item(py, 1)?,
-            revision_read.get_item(py, 4)?,
-            revision_read.get_item(py, 5)?,
-        );
-        let time: usize = time.extract(py)?;
-        let timezone: i32 = timezone.extract(py)?;
-        let tz = format!("{:+03}{:02}", -timezone / 3600, ((-timezone % 3600) / 60));
-        let extra: PyDict = extra.extract(py)?;
-        let branch = get_branch(extra.get_item(py, "branch").map(|p| p.extract(py).unwrap()));
-        let is_closed = extra.contains(py, "close")?;
-
-        let (_, data) = convert_pystring_to_bytes(py, &node);
-        let user: String = user.extract(py)?;
-        let result = (
-            Vec::from(data),
-            self.fixup_user(&user),
-            (time, tz),
-            desc.extract(py)?,
-            branch,
-            is_closed,
-        );
-
-        let mut changeset_cache = self.changeset_cache.borrow_mut();
-        changeset_cache.insert(revision, result.clone());
-
-        Ok(result)
-    }
-
-    fn manifest(&self, ctx: &PyObject, _revision: usize) -> PyResult<PyObject> {
-        let manifest = ctx.call_method(self.toolkit.py, "manifest", NoArgs, None)?;
-        Ok(manifest)
-    }
-
-    fn mark(&self, revision: usize) -> usize {
-        revision + 1 + self.config.offset.unwrap_or(0)
+    fn range(&self, range: Range<usize>) -> ChangesetIter {
+        self.inner.range_iter(range)
     }
 
     fn export_commit(
         &self,
-        revision: usize,
+        changeset: &mut Changeset,
         max: usize,
         count: usize,
         brmap: &mut HashMap<String, String>,
         output: &mut Write,
-    ) -> PyResult<usize> {
-        let (py, env, repo) = (self.toolkit.py, self.toolkit.env, &self.repo);
-        let (_, user, (time, timezone), desc, branch, is_closed) = self.changeset(revision)?;
+    ) -> Result<usize, ErrorKind> {
+        let header = &changeset.header;
+
+        let user = std::str::from_utf8(&header.user)?;
+
+        let mut branch = None;
+        let mut closed = false;
+        for (key, value) in &header.extra {
+            if key == b"branch" {
+                branch = Some(value.as_slice());
+            }
+
+            if key == b"close" && value == b"1" {
+                closed = true;
+            }
+        }
+        let branch: String = std::str::from_utf8(branch.unwrap_or_else(|| b"master"))?.into();
 
         let branch = brmap.entry(branch.clone()).or_insert_with(|| {
             sanitize_name(
@@ -315,294 +180,97 @@ impl<'a> MercurialRepo<'a> {
             )
         });
 
-        let parents = self.get_parents(revision)?;
+        let revision = changeset.revision;
 
-        debug!("parents: {:?}", parents);
-
-        if !parents.is_empty() && revision != 0 {
-            writeln!(output, "reset refs/heads/{}", branch).unwrap();
+        if header.p1.is_some() || header.p2.is_some() || revision != 0.into() {
+            writeln!(output, "reset refs/heads/{}", branch)?;
         }
-        writeln!(output, "commit refs/heads/{}", branch).unwrap();
-        writeln!(output, "mark :{}", self.mark(revision)).unwrap();
-        writeln!(
-            output,
-            "author {} {} {}",
-            get_author(&desc, &user),
-            time,
-            timezone
-        )
-        .unwrap();
-        writeln!(output, "committer {} {} {}", user, time, timezone).unwrap();
-        writeln!(output, "data {}", desc.len() + 1).unwrap();
-        writeln!(output, "{}\n", desc).unwrap();
+        let desc = String::from_utf8_lossy(&header.comment);
 
-        let ctx = self.revsymbol(revision)?;
-        let man = self.manifest(&ctx, revision)?;
+        let time = header.time.timestamp_secs();
+        let timezone = header.time.tz_offset_secs();
+        let tz = format!("{:+03}{:02}", -timezone / 3600, ((-timezone % 3600) / 60));
 
-        let mut added = vec![];
-        let mut changed = vec![];
-        let mut removed = vec![];
+        writeln!(output, "commit refs/heads/{}", branch)?;
+        writeln!(output, "mark :{}", self.mark(revision))?;
 
-        let rev_type = if parents.is_empty() {
-            let mut man_keys = get_keys(py, &man)?;
-            added.append(&mut man_keys);
-            added.sort();
-            "full"
-        } else {
-            let parent = parents[0];
-            writeln!(output, "from :{}", self.mark(parent as usize)).unwrap();
-            if parents.len() == 1 {
-                let mut f: Vec<Vec<String>> = repo
-                    .call_method(py, "status", (parent, revision), None)?
-                    .iter(py)?
-                    .take(3)
-                    .map(|x| x.unwrap().extract(py).unwrap())
-                    .collect();
-                added.append(&mut f[1]);
-                changed.append(&mut f[0]);
-                removed.append(&mut f[2]);
-                "simple delta"
-            } else {
-                writeln!(output, "merge :{}", self.mark(parents[1] as usize)).unwrap();
-                let (mut a, mut c, mut r) = self.get_filechanges(&parents, &man)?;
-                added.append(&mut a);
-                changed.append(&mut c);
-                removed.append(&mut r);
-                "thorough delta"
+        writeln!(output, "author {} {} {}", user, time, tz)?;
+        writeln!(output, "committer {} {} {}", user, time, tz)?;
+        writeln!(output, "data {}", desc.len() + 1)?;
+        writeln!(output, "{}\n", desc)?;
+
+        match (header.p1, header.p2) {
+            (Some(p1), Some(p2)) => {
+                writeln!(output, "from :{}", self.mark(p1))?;
+                writeln!(output, "merge :{}", self.mark(p2))?;
             }
-        };
-        info!(
-            "{}: Exporting {} revision {}/{} mark {} with {}/{}/{} added/changed/removed files",
-            branch,
-            rev_type,
-            revision,
-            max,
-            self.mark(revision),
-            added.len(),
-            changed.len(),
-            removed.len()
-        );
-
-        removed
-            .iter()
-            .map(|x| strip_leading_slash(self.config.path_prefix.as_ref(), x))
-            .for_each(|x| writeln!(output, "D {}", x).unwrap());
-        export_file_contents(py, &ctx, &man, &added, self.config, output)?;
-        export_file_contents(py, &ctx, &man, &changed, self.config, output)?;
-        writeln!(output).unwrap();
-        if is_closed && !env.no_clean_closed_branches {
-            info!(
-                "Saving reference to closed branch {} as archive/{}",
-                branch, branch
-            );
-            writeln!(output, "reset refs/tags/archive/{}", branch).unwrap();
-            writeln!(output, "from :{}\n", self.mark(revision)).unwrap();
-
-            info!("Closing branch: {}", branch);
-            writeln!(output, "reset refs/heads/{}", branch).unwrap();
-            writeln!(output, "from 0000000000000000000000000000000000000000\n").unwrap();
+            (Some(p), None) | (None, Some(p)) => {
+                writeln!(output, "from :{}", self.mark(p))?;
+            }
+            _ => (),
         }
-        Ok(count + 1)
-    }
 
-    fn export_note(
-        &self,
-        revision: usize,
-        count: usize,
-        is_first: bool,
-        output: &mut Write,
-    ) -> PyResult<usize> {
-        let py = self.toolkit.py;
-        let (_, user, (time, timezone), _, _, _) = self.changeset(revision)?;
-
-        writeln!(output, "commit refs/notes/hg").unwrap();
-        writeln!(output, "committer {} {} {}", user, time, timezone).unwrap();
-        writeln!(output, "data 0").unwrap();
-        if is_first {
-            writeln!(output, "from refs/notes/hg^0").unwrap();
+        for ref mut file in &mut changeset.files {
+            match (&mut file.data, &mut file.manifest_entry) {
+                (None, None) => {
+                    write!(output, "D ")?;
+                    output.write_all(&mut file.path)?;
+                    writeln!(output)?;
+                }
+                (Some(data), Some(manifest_entry)) => {
+                    write!(
+                        output,
+                        "M {} inline ",
+                        match manifest_entry.details {
+                            ManifestEntryDetails::File(FileType::Symlink) => "120000",
+                            ManifestEntryDetails::File(FileType::Executable) => "100755",
+                            ManifestEntryDetails::Tree
+                            | ManifestEntryDetails::File(FileType::Regular) => "100644",
+                        }
+                    )?;
+                    output.write_all(&mut file.path)?;
+                    let data = file_content(&data);
+                    writeln!(output, "\ndata {}", data.len())?;
+                    output.write_all(&data[..])?;
+                }
+                _ => panic!("Wrong file data!"),
+            }
         }
-        writeln!(output, "N inline :{}", self.mark(revision)).unwrap();
 
-        let ctx = self.revsymbol(revision)?;
-        let hg_hash: String = ctx.call_method(py, "hex", NoArgs, None)?.extract(py)?;
+        if closed {
+            writeln!(output, "reset refs/tags/archive/{}", branch)?;
+            writeln!(output, "from :{}\n", self.mark(revision))?;
 
-        writeln!(output, "data {}", hg_hash.len()).unwrap();
-        writeln!(output, "{}", hg_hash).unwrap();
-
+            writeln!(output, "reset refs/heads/{}", branch)?;
+            writeln!(output, "\nfrom 0000000000000000000000000000000000000000\n")?;
+        }
         Ok(count + 1)
     }
 
     fn export_tags(
         &self,
-        mapping_cache: &HashMap<Vec<u8>, usize>,
+        range: Range<usize>,
         mut count: usize,
         output: &mut Write,
-    ) -> PyResult<usize> {
-        let (py, repo) = (self.toolkit.py, &self.repo);
-        let l: Vec<(String, PyObject)> = repo
-            .call_method(py, "tagslist", NoArgs, None)?
-            .extract(py)?;
+    ) -> Result<usize, ErrorKind> {
+        for (revision, tag) in self
+            .inner
+            .tags()?
+            .range(Revision::from(range.start as u32)..Revision::from(range.end as u32))
+        {
+            let tag = sanitize_name(&tag.name, self.config.tag_prefix.as_ref(), "tag");
 
-        for (tag, node) in l {
-            let tag = sanitize_name(&tag, self.config.tag_prefix.as_ref(), "tag");
-            if tag == "tip" {
-                continue;
-            }
-
-            let node_str: PyString = node.extract(py)?;
-            let (_, node_key) = convert_pystring_to_bytes(py, &node_str);
-            if let Some(rev) = mapping_cache.get(node_key) {
-                writeln!(output, "reset refs/tags/{}", tag).unwrap();
-                writeln!(output, "from :{}", self.mark(*rev)).unwrap();
-                writeln!(output).unwrap();
-                count += 1;
-            } else {
-                error!("Tag {} refers to unseen node {:?}", tag, node_key);
-            }
+            writeln!(output, "reset refs/tags/{}", tag).unwrap();
+            writeln!(output, "from :{}", self.mark(*revision)).unwrap();
+            writeln!(output).unwrap();
+            count += 1;
         }
         Ok(count)
     }
-
-    fn get_parents(&self, revision: usize) -> PyResult<Vec<i32>> {
-        let py = self.toolkit.py;
-        Ok(self
-            .changelog
-            .call_method(py, "parentrevs", (revision,), None)?
-            .extract::<Vec<i32>>(py)?
-            .into_iter()
-            .filter(|&p| p >= 0)
-            .collect())
-    }
-
-    fn get_filechanges(
-        &self,
-        parents: &[i32],
-        mleft: &PyObject,
-    ) -> PyResult<(Vec<String>, Vec<String>, Vec<String>)> {
-        let (py, node) = (self.toolkit.py, &self.toolkit.mercurial_node);
-        let (mut l, mut c, mut r) = (vec![], vec![], vec![]);
-        for &p in parents {
-            if p < 0 {
-                continue;
-            }
-            let rev = p as usize;
-            let ctx = self.revsymbol(rev)?;
-            let mright = self.manifest(&ctx, rev)?;
-            split_dict(py, node, mleft, &mright, &mut l, &mut c, &mut r)?;
-        }
-        l.sort();
-        c.sort();
-        r.sort();
-        Ok((l, c, r))
-    }
-}
-
-
-fn convert_pystring_to_bytes<'a>(py: Python, py_str: &'a PyString) -> (usize, &'a [u8]) {
-    let data = py_str.data(py);
-    match data {
-        PyStringData::Utf8(bytes) => (bytes.len(), bytes),
-        _ => panic!(),
-    }
-}
-
-fn export_file_contents(
-    py: Python,
-    ctx: &PyObject,
-    manifest: &PyObject,
-    files: &[String],
-    config: &config::RepositoryConfig,
-    output: &mut Write,
-) -> PyResult<()> {
-    for file in files {
-        if file == ".hgtags" {
-            info!("Skip {}", file);
-            continue;
-        }
-        let file_ctx = ctx.call_method(py, "filectx", (file,), None)?;
-        let data = file_ctx.call_method(py, "data", NoArgs, None)?;
-        let data_str: PyString = data.extract(py)?;
-        writeln!(
-            output,
-            "M {} inline {}",
-            gitmode(&get_flags(py, manifest, file)?),
-            strip_leading_slash(config.path_prefix.as_ref(), file)
-        )
-        .unwrap();
-        let (data_str_len, data_str_bytes) = convert_pystring_to_bytes(py, &data_str);
-        writeln!(output, "data {}", data_str_len).unwrap();
-        output.write_all(data_str_bytes).unwrap();
-        writeln!(output).unwrap();
-    }
-    Ok(())
 }
 
 fn strip_leading_slash(prefix: Option<&String>, x: &String) -> String {
     prefix.map_or_else(|| x.to_string(), |p| format!("{}/{}", p, x))
-}
-
-fn get_keys(py: Python, d: &PyObject) -> PyResult<Vec<String>> {
-    d.call_method(py, "keys", NoArgs, None)?.extract(py)
-}
-
-fn get_flags(py: Python, d: &PyObject, item: &str) -> PyResult<String> {
-    d.call_method(py, "flags", (item,), None)?.extract(py)
-}
-
-fn split_dict(
-    py: Python,
-    node: &PyModule,
-    dleft: &PyObject,
-    dright: &PyObject,
-    l: &mut Vec<String>,
-    c: &mut Vec<String>,
-    r: &mut Vec<String>,
-) -> PyResult<()> {
-    for left in &get_keys(py, dleft)? {
-        let right = dright.get_item(py, left).ok();
-        if right.is_none() {
-            l.push(left.to_string());
-        } else if file_mismatch(py, node, dleft.get_item(py, left).ok(), right)?
-            || gitmode(&get_flags(py, dleft, left)?) != gitmode(&get_flags(py, dright, left)?)
-        {
-            c.push(left.to_string());
-        }
-    }
-    for right in &get_keys(py, dright)? {
-        let left = dleft.get_item(py, right).ok();
-        if left.is_none() {
-            r.push(right.to_string());
-        }
-    }
-    Ok(())
-}
-
-fn gitmode(flags: &str) -> &'static str {
-    if flags.contains('l') {
-        return "120000";
-    }
-    if flags.contains('x') {
-        return "100755";
-    }
-    "100644"
-}
-
-fn hex(py: Python, node: &PyModule, filenode: &PyObject) -> String {
-    node.call(py, "hex", (filenode,), None)
-        .unwrap()
-        .extract::<String>(py)
-        .unwrap()
-}
-
-fn file_mismatch(
-    py: Python,
-    node: &PyModule,
-    f1: Option<PyObject>,
-    f2: Option<PyObject>,
-) -> PyResult<bool> {
-    let f1 = f1.map(|ref x| hex(py, node, x));
-    let f2 = f2.map(|ref x| hex(py, node, x));
-    Ok(f1 != f2)
 }
 
 fn get_author(logmessage: &str, committer: &str) -> String {
@@ -619,22 +287,6 @@ fn sanitize_name(name: &str, prefix: Option<&String>, what: &str) -> String {
     prefix.map_or_else(|| name.into(), |p| format!("{}{}", p, name))
 
     //TODO: git-check-ref-format
-}
-
-fn branchtip(py: Python, changelog: &PyObject, heads: &PyList) -> PyResult<PyString> {
-    let tip = heads.get_item(py, heads.len(py) - 1).extract(py)?;
-    let heads: Vec<_> = heads.iter(py).collect();
-    for h in heads.iter().rev() {
-        let is_closed = changelog
-            .call_method(py, "read", (h,), None)?
-            .get_item(py, 5)?
-            .extract::<PyDict>(py)?
-            .contains(py, "close")?;
-        if !is_closed {
-            return Ok(h.extract(py)?);
-        }
-    }
-    Ok(tip)
 }
 
 fn get_branch(name: Option<String>) -> String {

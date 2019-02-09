@@ -1,0 +1,25 @@
+#[derive(Debug)]
+pub enum ErrorKind {
+    HgParserFailure(hg_parser::ErrorKind),
+    Encoding(std::str::Utf8Error),
+    IO(std::io::Error),
+    VerifyFailure(String),
+}
+
+impl From<hg_parser::ErrorKind> for ErrorKind {
+    fn from(value: hg_parser::ErrorKind) -> Self {
+        ErrorKind::HgParserFailure(value)
+    }
+}
+
+impl From<std::str::Utf8Error> for ErrorKind {
+    fn from(value: std::str::Utf8Error) -> Self {
+        ErrorKind::Encoding(value)
+    }
+}
+
+impl From<std::io::Error> for ErrorKind {
+    fn from(value: std::io::Error) -> Self {
+        ErrorKind::IO(value)
+    }
+}

@@ -3,26 +3,21 @@ use std::collections::HashMap;
 use log::{debug, info};
 use std::path::Path;
 
-use cpython::{PyResult, Python};
+use crate::error::ErrorKind;
 
-use super::{config, MercurialToolkit, RepositorySavedState, TargetRepository};
+use super::{config, RepositorySavedState, TargetRepository, MercurialRepo};
 
 pub fn hg2git<P: AsRef<Path>>(
     repourl: P,
-    export_notes: bool,
     verify: bool,
     target: &mut TargetRepository,
     env: &config::Environment,
     repository_config: &config::RepositoryConfig,
-) -> PyResult<()> {
-    let gil = Python::acquire_gil();
-
-    let mercurial = MercurialToolkit::new(&gil, env)?;
-
-    let repo = mercurial.open_repo(&repourl, repository_config)?;
+) -> Result<(), ErrorKind> {
+    let repo = MercurialRepo::open(repourl.as_ref(), repository_config, env)?;
 
     if !repo.verify_heads(repository_config.allow_unnamed_heads)? {
-        return mercurial.error("Verify heads failed");
+        return Err(ErrorKind::VerifyFailure("Verify heads failed".into()));
     };
 
     let tip = repo.changelog_len()?;
@@ -32,13 +27,6 @@ pub fn hg2git<P: AsRef<Path>>(
     } else {
         tip
     };
-
-    let mut mapping_cache = HashMap::new();
-    for rev in 0..max {
-        let (revnode, _, _, _, _, _) = repo.changeset(rev)?;
-        mapping_cache.insert(revnode, rev);
-    }
-    debug!("mapping_cache: {:?}", mapping_cache);
 
     debug!("Checking saved state...");
     let mut brmap = repository_config
@@ -65,16 +53,12 @@ pub fn hg2git<P: AsRef<Path>>(
 
         for rev in min..max {
             debug!("exporting commit: {}", rev);
-            c = repo.export_commit(rev, max, c, &mut brmap, output)?;
+            for mut changeset in repo.range(min..max) {
+                c = repo.export_commit(&mut changeset, max, c, &mut brmap, output)?;
+            };
         }
 
-        if export_notes {
-            for rev in min..max {
-                c = repo.export_note(rev, c, rev == min && min != 0, output)?;
-            }
-        }
-
-        c = repo.export_tags(&mapping_cache, c, output)?;
+        c = repo.export_tags(min..max, c, output)?;
     }
     info!("Issued {} commands", c);
     info!("Saving state...");
