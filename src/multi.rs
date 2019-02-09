@@ -18,8 +18,7 @@ struct ImportingRepository<'a> {
 }
 
 pub fn multi2git<P: AsRef<Path>>(
-    _export_notes: bool,
-    _verify: bool,
+    verify: bool,
     target: &mut TargetRepository,
     env: &config::Environment,
     config: P,
@@ -52,13 +51,13 @@ pub fn multi2git<P: AsRef<Path>>(
         return Err(ErrorKind::VerifyFailure("Verify heads failed".into()));
     }
 
-    let mut all_revisions = Vec::new();
-
-    info!("Analyzing revision log");
-    info!("Checking revision log to create single list of revisions in historical order");
-
     {
+        let mut all_revisions = Vec::new();
+
+        info!("Trying to load state");
         let (output, saved_state) = target.init().unwrap();
+
+        info!("Checking revision log to create single list of revisions in historical order");
 
         let mut importing_repositories: Vec<_> = repositories
             .iter()
@@ -123,6 +122,21 @@ pub fn multi2git<P: AsRef<Path>>(
     }
 
     target.finish().unwrap();
+
+    if verify {
+        for (repository_config, repo) in repositories {
+            target
+                .verify(
+                    repo.path().to_str().unwrap(),
+                    repository_config
+                        .config
+                        .path_prefix
+                        .as_ref()
+                        .map(|x| &x[..]),
+                )
+                .unwrap();
+        }
+    }
 
     Ok(())
 }

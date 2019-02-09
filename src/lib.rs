@@ -79,6 +79,7 @@ pub trait TargetRepository {
 }
 
 struct MercurialRepo<'a> {
+    path: PathBuf,
     inner: MercurialRepository,
     config: &'a config::RepositoryConfig,
     env: &'a config::Environment,
@@ -86,15 +87,20 @@ struct MercurialRepo<'a> {
 
 impl<'a> MercurialRepo<'a> {
     pub fn open<P: AsRef<Path>>(
-        root_path: P,
+        path: P,
         config: &'a config::RepositoryConfig,
         env: &'a config::Environment,
     ) -> Result<MercurialRepo<'a>, ErrorKind> {
         Ok(Self {
-            inner: MercurialRepository::open(root_path)?,
+            path: path.as_ref().clone().to_path_buf(),
+            inner: MercurialRepository::open(path)?,
             config,
             env,
         })
+    }
+
+    fn path(&self) -> &Path {
+        self.path.as_path()
     }
 
     fn verify_heads(&self, allow_unnamed_heads: bool) -> Result<bool, ErrorKind> {
@@ -210,10 +216,11 @@ impl<'a> MercurialRepo<'a> {
             _ => (),
         }
 
+        let prefix = strip_leading_slash(self.config.path_prefix.as_ref(), &"".into());
         for ref mut file in &mut changeset.files {
             match (&mut file.data, &mut file.manifest_entry) {
                 (None, None) => {
-                    write!(output, "D ")?;
+                    write!(output, "D {}", prefix)?;
                     output.write_all(&mut file.path)?;
                     writeln!(output)?;
                 }
@@ -227,7 +234,7 @@ impl<'a> MercurialRepo<'a> {
                             ManifestEntryDetails::Tree
                             | ManifestEntryDetails::File(FileType::Regular) => "100644",
                         },
-                        strip_leading_slash(self.config.path_prefix.as_ref(), &"".into())
+                        prefix
                     )?;
                     output.write_all(&mut file.path)?;
                     let data = file_content(&data);

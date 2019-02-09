@@ -11,18 +11,17 @@ where
     X: IntoIterator,
 {
     ConditionalMultiIterator {
-        sources: sources.into_iter().map(|x| x.into_iter().peekable()).collect(),
+        sources: sources
+            .into_iter()
+            .map(|x| x.into_iter().peekable())
+            .collect(),
         aggregate,
         predicate,
     }
 }
 
-pub struct ConditionalMultiIterator<
-    X: IntoIterator,
-    A,
-    I,
-    P,
-> where
+pub struct ConditionalMultiIterator<X: IntoIterator, A, I, P>
+where
     A: Fn(&[Option<&X::Item>]) -> I,
     P: Fn(&Option<&X::Item>, &I) -> bool,
 {

@@ -184,6 +184,11 @@ impl TargetRepository for GitTargetRepository {
             || self.path.to_str().unwrap().into(),
             |subfolder| self.path.join(subfolder).to_str().unwrap().into(),
         );
+
+        info!(
+            "Mercurial (source): {} Git(target): {}",
+            verified_repo, path
+        );
         let status = Command::new("diff")
             .args(&[
                 "-ur",

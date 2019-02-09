@@ -85,7 +85,6 @@ fn main() {
             if let Some(git_repo) = git_repo {
                 let mut git_target_repository = GitTargetRepository::open(git_repo);
                 multi2git(
-                    false,
                     verify,
                     &mut git_target_repository,
                     &env,

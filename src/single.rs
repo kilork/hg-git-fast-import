@@ -5,7 +5,7 @@ use std::path::Path;
 
 use crate::error::ErrorKind;
 
-use super::{config, RepositorySavedState, TargetRepository, MercurialRepo};
+use super::{config, MercurialRepo, RepositorySavedState, TargetRepository};
 
 pub fn hg2git<P: AsRef<Path>>(
     repourl: P,
@@ -55,7 +55,7 @@ pub fn hg2git<P: AsRef<Path>>(
             debug!("exporting commit: {}", rev);
             for mut changeset in repo.range(min..max) {
                 c = repo.export_commit(&mut changeset, max, c, &mut brmap, output)?;
-            };
+            }
         }
 
         c = repo.export_tags(min..max, c, output)?;
