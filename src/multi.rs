@@ -58,6 +58,8 @@ pub fn multi2git<P: AsRef<Path>>(
     info!("Checking revision log to create single list of revisions in historical order");
 
     {
+        let (output, saved_state) = target.init().unwrap();
+
         let mut importing_repositories: Vec<_> = repositories
             .iter()
             .enumerate()
@@ -69,8 +71,6 @@ pub fn multi2git<P: AsRef<Path>>(
                 } else {
                     tip
                 };
-
-                all_revisions.push(ChangesetIterWrapper::new(repo.range(0..max), index));
 
                 let brmap = path_config
                     .config
@@ -85,6 +85,12 @@ pub fn multi2git<P: AsRef<Path>>(
                     brmap,
                     path_config,
                 };
+
+                all_revisions.push(ChangesetIterWrapper::new(
+                    repo.range(importing_repository.min..importing_repository.max),
+                    index,
+                ));
+
                 importing_repository
             })
             .collect();
@@ -95,7 +101,6 @@ pub fn multi2git<P: AsRef<Path>>(
             |x| x.iter().filter_map(|x| x.map(|x| x.0.header.time)).min(),
             |x, y| y == &x.map(|x| x.0.header.time),
         );
-        let (output, saved_state) = target.init().unwrap();
 
         info!("Exporting commits");
 
@@ -112,7 +117,7 @@ pub fn multi2git<P: AsRef<Path>>(
         }
 
         for (importing_repo, (_, repo)) in importing_repositories.iter().zip(repositories.iter()) {
-            c = repo.export_tags(0..importing_repo.max, c, output)?;
+            c = repo.export_tags(importing_repo.min..importing_repo.max, c, output)?;
         }
         info!("Issued {} commands", c);
     }

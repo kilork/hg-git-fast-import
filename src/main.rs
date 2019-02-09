@@ -1,5 +1,6 @@
 use std::io;
 use std::path::PathBuf;
+use std::time::Instant;
 
 use log::{info, trace};
 
@@ -7,7 +8,7 @@ use structopt::StructOpt;
 
 use hg_git_fast_import::config::{Environment, RepositoryConfig};
 use hg_git_fast_import::git::{GitTargetRepository, StdoutTargetRepository};
-use hg_git_fast_import::{single::hg2git, multi::multi2git, read_file};
+use hg_git_fast_import::{multi::multi2git, read_file, single::hg2git};
 
 use env_logger::{Builder, Env};
 mod cli;
@@ -75,6 +76,7 @@ fn main() {
             no_clean_closed_branches,
             verify,
         } => {
+            let start_time = Instant::now();
             let env = load_environment(&authors, no_clean_closed_branches);
             info!("Loading config");
             let config_str = read_file(&config).unwrap();
@@ -82,10 +84,19 @@ fn main() {
             info!("Config loaded");
             if let Some(git_repo) = git_repo {
                 let mut git_target_repository = GitTargetRepository::open(git_repo);
-                multi2git(false, verify, &mut git_target_repository, &env, &config, &multi_config).unwrap();
+                multi2git(
+                    false,
+                    verify,
+                    &mut git_target_repository,
+                    &env,
+                    &config,
+                    &multi_config,
+                )
+                .unwrap();
             } else {
                 unimplemented!();
             }
+            info!("Finished. Time elapsed: {:?}", start_time.elapsed());
         }
     }
 }
