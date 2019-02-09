@@ -274,25 +274,9 @@ fn strip_leading_slash(prefix: Option<&String>, x: &String) -> String {
     prefix.map_or_else(|| x.to_string(), |p| format!("{}/{}", p, x))
 }
 
-fn get_author(logmessage: &str, committer: &str) -> String {
-    if logmessage.contains("Signed") {
-        warn!("Probably need to implement this, because logmessage contains different author");
-        warn!("logmessage: {}", logmessage);
-        warn!("committer: {}", committer);
-    }
-    committer.into()
-}
-
 fn sanitize_name(name: &str, prefix: Option<&String>, what: &str) -> String {
     trace!("Sanitize {} '{}'", what, name);
     prefix.map_or_else(|| name.into(), |p| format!("{}{}", p, name))
 
     //TODO: git-check-ref-format
-}
-
-fn get_branch(name: Option<String>) -> String {
-    match name.as_ref().map(|x| &x[..]) {
-        Some("HEAD") | Some("default") | Some("") | None => "master".into(),
-        Some(name) => name.into(),
-    }
 }
