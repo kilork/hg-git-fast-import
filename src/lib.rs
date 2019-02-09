@@ -26,8 +26,8 @@ use self::config::RepositorySavedState;
 pub use error::ErrorKind;
 
 use hg_parser::{
-    file_content, Changeset, ChangesetIter, FileType, ManifestEntryDetails, MercurialRepository, Revision,
-    RevisionRange,
+    file_content, Changeset, ChangesetIter, FileType, ManifestEntryDetails, MercurialRepository,
+    Revision, RevisionRange,
 };
 
 pub fn read_file(filename: &PathBuf) -> io::Result<String> {
@@ -153,7 +153,7 @@ impl<'a> MercurialRepo<'a> {
     ) -> Result<usize, ErrorKind> {
         let header = &changeset.header;
 
-        let user = std::str::from_utf8(&header.user)?;
+        let user = self.fixup_user(std::str::from_utf8(&header.user)?);
 
         let mut branch = None;
         let mut closed = false;
@@ -220,13 +220,14 @@ impl<'a> MercurialRepo<'a> {
                 (Some(data), Some(manifest_entry)) => {
                     write!(
                         output,
-                        "M {} inline ",
+                        "M {} inline {}",
                         match manifest_entry.details {
                             ManifestEntryDetails::File(FileType::Symlink) => "120000",
                             ManifestEntryDetails::File(FileType::Executable) => "100755",
                             ManifestEntryDetails::Tree
                             | ManifestEntryDetails::File(FileType::Regular) => "100644",
-                        }
+                        },
+                        strip_leading_slash(self.config.path_prefix.as_ref(), &"".into())
                     )?;
                     output.write_all(&mut file.path)?;
                     let data = file_content(&data);
@@ -242,7 +243,7 @@ impl<'a> MercurialRepo<'a> {
             writeln!(output, "from :{}\n", self.mark(revision))?;
 
             writeln!(output, "reset refs/heads/{}", branch)?;
-            writeln!(output, "\nfrom 0000000000000000000000000000000000000000\n")?;
+            writeln!(output, "from 0000000000000000000000000000000000000000\n")?;
         }
         Ok(count + 1)
     }
