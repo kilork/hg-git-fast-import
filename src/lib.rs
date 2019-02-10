@@ -198,7 +198,8 @@ impl<'a> MercurialRepo<'a> {
         let tz = format!("{:+03}{:02}", -timezone / 3600, ((-timezone % 3600) / 60));
 
         writeln!(output, "commit refs/heads/{}", branch)?;
-        writeln!(output, "mark :{}", self.mark(revision))?;
+        let mark = self.mark(revision);
+        writeln!(output, "mark :{}", mark)?;
 
         writeln!(output, "author {} {} {}", user, time, tz)?;
         writeln!(output, "committer {} {} {}", user, time, tz)?;
@@ -216,6 +217,7 @@ impl<'a> MercurialRepo<'a> {
             _ => (),
         }
 
+        debug!("{: <15} {: <32} {: <64} {}", format!("{}({})", mark, revision.0), branch, user, header.time);
         let prefix = strip_leading_slash(self.config.path_prefix.as_ref(), &"".into());
         for ref mut file in &mut changeset.files {
             match (&mut file.data, &mut file.manifest_entry) {
@@ -261,6 +263,7 @@ impl<'a> MercurialRepo<'a> {
         mut count: usize,
         output: &mut Write,
     ) -> Result<usize, ErrorKind> {
+        info!("Exporting tags");
         for (revision, tag) in self
             .inner
             .tags()?
