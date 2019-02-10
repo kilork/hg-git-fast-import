@@ -217,7 +217,13 @@ impl<'a> MercurialRepo<'a> {
             _ => (),
         }
 
-        debug!("{: <15} {: <32} {: <64} {}", format!("{}({})", mark, revision.0), branch, user, header.time);
+        debug!(
+            "{: <15} {: <32} {: <64} {}",
+            format!("{}({})", mark, revision.0),
+            branch,
+            user,
+            header.time
+        );
         let prefix = strip_leading_slash(self.config.path_prefix.as_ref(), &"".into());
         for ref mut file in &mut changeset.files {
             match (&mut file.data, &mut file.manifest_entry) {

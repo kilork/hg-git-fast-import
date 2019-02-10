@@ -1,12 +1,12 @@
 use std::collections::HashMap;
-use std::ops::Range;
 use std::path::Path;
-use std::path::PathBuf;
-use std::rc::Rc;
 
 use log::{debug, info};
 
-use super::{collections::conditional_multi_iter, config, MercurialRepo, TargetRepository};
+use super::{
+    collections::conditional_multi_iter, config, MercurialRepo, RepositorySavedState,
+    TargetRepository,
+};
 use crate::error::ErrorKind;
 use hg_parser::{Changeset, ChangesetIter};
 
@@ -119,6 +119,15 @@ pub fn multi2git<P: AsRef<Path>>(
             c = repo.export_tags(importing_repo.min..importing_repo.max, c, output)?;
         }
         info!("Issued {} commands", c);
+        info!("Saving state...");
+        target
+            .save_state(RepositorySavedState::OffsetedRevisionSet(
+                importing_repositories
+                    .iter()
+                    .map(|x| x.max + x.path_config.config.offset.unwrap_or(0))
+                    .collect(),
+            ))
+            .unwrap();
     }
 
     target.finish().unwrap();
