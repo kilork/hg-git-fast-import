@@ -71,6 +71,19 @@ pub fn multi2git<P: AsRef<Path>>(
                     tip
                 };
 
+                let offset = path_config.config.offset.unwrap_or(0);
+
+                let min = saved_state
+                    .as_ref()
+                    .and_then(|x| match x {
+                        RepositorySavedState::OffsetedRevisionSet(saved_maxs) => saved_maxs
+                            .iter()
+                            .filter(|&&rev| rev >= offset && rev <= max + offset)
+                            .map(|x| x - offset)
+                            .next(),
+                    })
+                    .unwrap_or(0);
+
                 let brmap = path_config
                     .config
                     .branches
@@ -79,7 +92,7 @@ pub fn multi2git<P: AsRef<Path>>(
                     .unwrap_or_else(|| HashMap::new());
 
                 let importing_repository = ImportingRepository {
-                    min: 0,
+                    min,
                     max,
                     brmap,
                     path_config,
