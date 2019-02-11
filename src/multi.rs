@@ -38,7 +38,16 @@ pub fn multi2git<P: AsRef<Path>>(
                     .unwrap_or(x.path.clone())
             };
 
-            (x, MercurialRepo::open(&path, &x.config, env).unwrap())
+            (
+                x,
+                match MercurialRepo::open(&path, &x.config, env) {
+                    Ok(repo) => repo,
+                    Err(ErrorKind::HgParserFailure(fail)) => {
+                        panic!("Cannot open {:?}: {:?}", path, fail)
+                    }
+                    Err(other) => panic!("Cannot open {:?}: {:?}", path, other),
+                },
+            )
         })
         .collect();
 
@@ -52,7 +61,7 @@ pub fn multi2git<P: AsRef<Path>>(
     }
 
     {
-        let mut all_revisions = Vec::new();
+        let mut all_repo_iterators = Vec::new();
 
         info!("Trying to load state");
         let (output, saved_state) = target.init().unwrap();
@@ -97,8 +106,15 @@ pub fn multi2git<P: AsRef<Path>>(
                     brmap,
                     path_config,
                 };
+                info!(
+                    "repo: {:?} min: {} max: {} offset: {:?}",
+                    importing_repository.path_config.path,
+                    importing_repository.min,
+                    importing_repository.max,
+                    importing_repository.path_config.config.offset
+                );
 
-                all_revisions.push(ChangesetIterWrapper::new(
+                all_repo_iterators.push(ChangesetIterWrapper::new(
                     repo.range(importing_repository.min..importing_repository.max),
                     index,
                 ));
@@ -108,15 +124,15 @@ pub fn multi2git<P: AsRef<Path>>(
             .collect();
 
         let mut c: usize = 0;
-        let mut all_revisions_iter = conditional_multi_iter(
-            all_revisions,
+        let mut all_repo_iterators_iter = conditional_multi_iter(
+            all_repo_iterators,
             |x| x.iter().filter_map(|x| x.map(|x| x.0.header.time)).min(),
             |x, y| y == &x.map(|x| x.0.header.time),
         );
 
         info!("Exporting commits");
 
-        for (ref mut changelog, repo_index) in &mut all_revisions_iter {
+        for (ref mut changelog, repo_index) in &mut all_repo_iterators_iter {
             let importing_repository = &mut importing_repositories[repo_index];
             let (_, repo) = &repositories[repo_index];
             c = repo.export_commit(
