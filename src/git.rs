@@ -208,7 +208,7 @@ impl TargetRepository for GitTargetRepository {
         if status.success() {
             info!("OK")
         } else {
-            panic!("Verify failed.");
+            error!("Verify failed.");
         }
         Ok(())
     }

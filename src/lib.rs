@@ -190,7 +190,7 @@ impl<'a> MercurialRepo<'a> {
 
         let revision = changeset.revision;
 
-        if header.p1.is_some() || header.p2.is_some() || revision != 0.into() {
+        if header.p1.is_some() || header.p2.is_some() || revision != 0.into() || !heads.is_empty() {
             writeln!(output, "reset refs/heads/{}", branch)?;
         }
         let desc = String::from_utf8_lossy(&header.comment);
@@ -214,10 +214,31 @@ impl<'a> MercurialRepo<'a> {
                 writeln!(output, "merge :{}", self.mark(p2))?;
             }
             (Some(p), None) | (None, Some(p)) => {
-                writeln!(output, "from :{}", self.mark(p))?;
+                let mut original_from = self.mark(p);
+                if revision == p + 1 {
+                    match (heads.get(branch), repository_heads.get(branch)) {
+                        (Some(&head), Some(&repository_head))
+                            if repository_head == original_from && head != repository_head =>
+                        {
+                            info!("taking revision for {} : {}", branch, head);
+                            original_from = head;
+                        }
+                        _ => (),
+                    }
+                }
+                writeln!(output, "from :{}", original_from)?;
             }
-            _ => (),
+            _ => {
+                if !heads.is_empty() {
+                    if let Some(head) = heads.get(branch) {
+                        writeln!(output, "from :{}", head)?;
+                    }
+                }
+            }
         }
+
+        heads.insert(branch.clone(), mark);
+        repository_heads.insert(branch.clone(), mark);
 
         debug!(
             "{: <15} {: <32} {: <64} {}",
