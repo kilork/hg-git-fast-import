@@ -39,7 +39,7 @@ pub fn hg2git<P: AsRef<Path>>(
     {
         let (output, saved_state) = target.init().unwrap();
 
-        let min = if let Some(saved_state) = saved_state {
+        let min = if let Some(saved_state) = saved_state.as_ref() {
             match saved_state {
                 RepositorySavedState::OffsetedRevisionSet(revs)
                 | RepositorySavedState::HeadsAndOffsets { offsets: revs, .. } => {
@@ -52,10 +52,27 @@ pub fn hg2git<P: AsRef<Path>>(
 
         info!("Exporting commits from {}", min);
 
+        let mut heads = saved_state
+            .as_ref()
+            .map(|x| match x {
+                RepositorySavedState::HeadsAndOffsets { heads, .. } => heads.clone(),
+                _ => HashMap::new(),
+            })
+            .unwrap_or_else(HashMap::new);
+
+        let mut repository_heads = HashMap::new();
         for rev in min..max {
             debug!("exporting commit: {}", rev);
             for mut changeset in repo.range(min..max) {
-                c = repo.export_commit(&mut changeset, max, c, &mut brmap, output)?;
+                c = repo.export_commit(
+                    &mut changeset,
+                    max,
+                    c,
+                    &mut brmap,
+                    &mut repository_heads,
+                    &mut heads,
+                    output,
+                )?;
             }
         }
 

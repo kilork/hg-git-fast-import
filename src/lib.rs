@@ -155,6 +155,8 @@ impl<'a> MercurialRepo<'a> {
         max: usize,
         count: usize,
         brmap: &mut HashMap<String, String>,
+        repository_heads: &mut HashMap<String, usize>,
+        heads: &mut HashMap<String, usize>,
         output: &mut Write,
     ) -> Result<usize, ErrorKind> {
         let header = &changeset.header;

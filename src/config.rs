@@ -47,7 +47,7 @@ pub struct MultiConfig {
     pub repositories: Vec<PathRepositoryConfig>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Environment {
     pub no_clean_closed_branches: bool,
     pub authors: Option<HashMap<String, String>>,
@@ -60,7 +60,13 @@ pub enum RepositorySavedState {
     HeadsAndOffsets {
         offsets: Vec<usize>,
         heads: HashMap<String, usize>,
+        repositories: HashMap<String, Repository>
     },
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Repository {
+    pub heads: HashMap<String, usize>,
 }
 
 #[cfg(test)]
@@ -81,6 +87,7 @@ mod tests {
         let result = toml::to_string(&super::RepositorySavedState::HeadsAndOffsets {
             heads: vec![(String::from("Key"), 1usize)].into_iter().collect(),
             offsets: vec![],
+            repositories: vec![].into_iter().collect(),
         })
         .unwrap();
         assert_eq!(expected, result);

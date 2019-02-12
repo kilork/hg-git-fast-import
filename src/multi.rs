@@ -14,6 +14,7 @@ struct ImportingRepository<'a> {
     min: usize,
     max: usize,
     brmap: HashMap<String, String>,
+    heads: HashMap<String, usize>,
     path_config: &'a config::PathRepositoryConfig,
 }
 
@@ -104,10 +105,21 @@ pub fn multi2git<P: AsRef<Path>>(
                     .map(|x| x.clone())
                     .unwrap_or_else(|| HashMap::new());
 
+                let heads = saved_state
+                    .as_ref()
+                    .and_then(|x| match x {
+                        RepositorySavedState::OffsetedRevisionSet(_) => None,
+                        RepositorySavedState::HeadsAndOffsets { repositories, .. } => repositories
+                            .get(path_config.path.to_str().unwrap())
+                            .map(|x| x.heads.clone()),
+                    })
+                    .unwrap_or_else(HashMap::new);
+
                 let importing_repository = ImportingRepository {
                     min,
                     max,
                     brmap,
+                    heads,
                     path_config,
                 };
                 info!(
@@ -152,6 +164,8 @@ pub fn multi2git<P: AsRef<Path>>(
                 importing_repository.max,
                 c,
                 &mut importing_repository.brmap,
+                &mut importing_repository.heads,
+                &mut heads,
                 output,
             )?;
         }
@@ -168,6 +182,17 @@ pub fn multi2git<P: AsRef<Path>>(
                     .map(|x| x.max + x.path_config.config.offset.unwrap_or(0))
                     .collect(),
                 heads,
+                repositories: importing_repositories
+                    .iter()
+                    .map(|x| {
+                        (
+                            x.path_config.path.to_str().unwrap().into(),
+                            config::Repository {
+                                heads: x.heads.clone(),
+                            },
+                        )
+                    })
+                    .collect(),
             })
             .unwrap();
     }
