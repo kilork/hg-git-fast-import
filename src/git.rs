@@ -206,11 +206,10 @@ impl TargetRepository for GitTargetRepository {
             .wait()
             .unwrap();
         if status.success() {
-            info!("OK")
+            Ok(())
         } else {
-            error!("Verify failed.");
+            Err(TargetRepositoryError::VerifyFail)
         }
-        Ok(())
     }
 
     fn get_saved_state(&self) -> Option<&RepositorySavedState> {

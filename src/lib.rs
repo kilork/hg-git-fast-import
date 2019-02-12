@@ -45,6 +45,7 @@ pub enum TargetRepositoryError {
     CannotConfigRepo(ExitStatus),
     ImportFailed(ExitStatus),
     IOError(std::io::Error),
+    VerifyFail,
 }
 
 impl From<std::io::Error> for TargetRepositoryError {
