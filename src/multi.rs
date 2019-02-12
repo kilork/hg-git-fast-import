@@ -85,7 +85,11 @@ pub fn multi2git<P: AsRef<Path>>(
                 let min = saved_state
                     .as_ref()
                     .and_then(|x| match x {
-                        RepositorySavedState::OffsetedRevisionSet(saved_maxs) => saved_maxs
+                        RepositorySavedState::OffsetedRevisionSet(saved_maxs)
+                        | RepositorySavedState::HeadsAndOffsets {
+                            offsets: saved_maxs,
+                            ..
+                        } => saved_maxs
                             .iter()
                             .filter(|&&rev| rev >= offset && rev <= max + offset)
                             .map(|x| x - offset)
@@ -130,6 +134,14 @@ pub fn multi2git<P: AsRef<Path>>(
             |x, y| y == &x.map(|x| x.0.header.time),
         );
 
+        let mut heads = saved_state
+            .as_ref()
+            .map(|x| match x {
+                RepositorySavedState::HeadsAndOffsets { heads, .. } => heads.clone(),
+                _ => HashMap::new(),
+            })
+            .unwrap_or_else(HashMap::new);
+
         info!("Exporting commits");
 
         for (ref mut changelog, repo_index) in &mut all_repo_iterators_iter {
@@ -150,12 +162,13 @@ pub fn multi2git<P: AsRef<Path>>(
         info!("Issued {} commands", c);
         info!("Saving state...");
         target
-            .save_state(RepositorySavedState::OffsetedRevisionSet(
-                importing_repositories
+            .save_state(RepositorySavedState::HeadsAndOffsets {
+                offsets: importing_repositories
                     .iter()
                     .map(|x| x.max + x.path_config.config.offset.unwrap_or(0))
                     .collect(),
-            ))
+                heads,
+            })
             .unwrap();
     }
 

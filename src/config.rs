@@ -57,6 +57,10 @@ pub struct Environment {
 #[serde(tag = "type", content = "value")]
 pub enum RepositorySavedState {
     OffsetedRevisionSet(Vec<usize>),
+    HeadsAndOffsets {
+        offsets: Vec<usize>,
+        heads: HashMap<String, usize>,
+    },
 }
 
 #[cfg(test)]
@@ -68,6 +72,17 @@ mod tests {
         let expected = "type = \"OffsetedRevisionSet\"\nvalue = [100]\n";
         let result =
             toml::to_string(&super::RepositorySavedState::OffsetedRevisionSet(vec![100])).unwrap();
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn repository_saved_state_with_heads_to_toml() {
+        let expected = "type = \"HeadsAndOffsets\"\n\n[value]\noffsets = []\n\n[value.heads]\n";
+        let result = toml::to_string(&super::RepositorySavedState::HeadsAndOffsets {
+            heads: vec![(String::from("Key"), 1usize)].into_iter().collect(),
+            offsets: vec![],
+        })
+        .unwrap();
         assert_eq!(expected, result);
     }
 

@@ -27,7 +27,7 @@ pub use error::ErrorKind;
 
 use hg_parser::{
     file_content, Changeset, ChangesetIter, FileType, ManifestEntryDetails, MercurialRepository,
-    Revision, RevisionRange,
+    Revision,
 };
 
 pub fn read_file(filename: &PathBuf) -> io::Result<String> {

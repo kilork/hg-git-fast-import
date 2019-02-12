@@ -41,7 +41,8 @@ pub fn hg2git<P: AsRef<Path>>(
 
         let min = if let Some(saved_state) = saved_state {
             match saved_state {
-                RepositorySavedState::OffsetedRevisionSet(revs) => {
+                RepositorySavedState::OffsetedRevisionSet(revs)
+                | RepositorySavedState::HeadsAndOffsets { offsets: revs, .. } => {
                     *revs.first().unwrap() - repo.config.offset.unwrap_or(0)
                 }
             }
