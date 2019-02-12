@@ -41,9 +41,8 @@ pub fn hg2git<P: AsRef<Path>>(
 
         let min = if let Some(saved_state) = saved_state.as_ref() {
             match saved_state {
-                RepositorySavedState::OffsetedRevisionSet(revs)
-                | RepositorySavedState::HeadsAndOffsets { offsets: revs, .. } => {
-                    *revs.first().unwrap() - repo.config.offset.unwrap_or(0)
+                RepositorySavedState::OffsetedRevision(rev) => {
+                    rev - repo.config.offset.unwrap_or(0)
                 }
             }
         } else {
@@ -52,27 +51,10 @@ pub fn hg2git<P: AsRef<Path>>(
 
         info!("Exporting commits from {}", min);
 
-        let mut heads = saved_state
-            .as_ref()
-            .map(|x| match x {
-                RepositorySavedState::HeadsAndOffsets { heads, .. } => heads.clone(),
-                _ => HashMap::new(),
-            })
-            .unwrap_or_else(HashMap::new);
-
-        let mut repository_heads = HashMap::new();
         for rev in min..max {
             debug!("exporting commit: {}", rev);
             for mut changeset in repo.range(min..max) {
-                c = repo.export_commit(
-                    &mut changeset,
-                    max,
-                    c,
-                    &mut brmap,
-                    &mut repository_heads,
-                    &mut heads,
-                    output,
-                )?;
+                c = repo.export_commit(&mut changeset, max, c, &mut brmap, output)?;
             }
         }
 
@@ -81,9 +63,9 @@ pub fn hg2git<P: AsRef<Path>>(
     info!("Issued {} commands", c);
     info!("Saving state...");
     target
-        .save_state(RepositorySavedState::OffsetedRevisionSet(vec![
+        .save_state(RepositorySavedState::OffsetedRevision(
             max + repository_config.offset.unwrap_or(0),
-        ]))
+        ))
         .unwrap();
 
     target.finish().unwrap();

@@ -15,7 +15,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::ExitStatus;
 
-mod collections;
 pub mod config;
 pub mod error;
 pub mod git;
@@ -155,8 +154,6 @@ impl<'a> MercurialRepo<'a> {
         max: usize,
         count: usize,
         brmap: &mut HashMap<String, String>,
-        repository_heads: &mut HashMap<String, usize>,
-        heads: &mut HashMap<String, usize>,
         output: &mut Write,
     ) -> Result<usize, ErrorKind> {
         let header = &changeset.header;
@@ -190,7 +187,7 @@ impl<'a> MercurialRepo<'a> {
 
         let revision = changeset.revision;
 
-        if header.p1.is_some() || header.p2.is_some() || revision != 0.into() || !heads.is_empty() {
+        if header.p1.is_some() || header.p2.is_some() || revision != 0.into() {
             writeln!(output, "reset refs/heads/{}", branch)?;
         }
         let desc = String::from_utf8_lossy(&header.comment);
@@ -214,31 +211,10 @@ impl<'a> MercurialRepo<'a> {
                 writeln!(output, "merge :{}", self.mark(p2))?;
             }
             (Some(p), None) | (None, Some(p)) => {
-                let mut original_from = self.mark(p);
-                if revision == p + 1 {
-                    match (heads.get(branch), repository_heads.get(branch)) {
-                        (Some(&head), Some(&repository_head))
-                            if repository_head == original_from && head != repository_head =>
-                        {
-                            info!("taking revision for {} : {}", branch, head);
-                            original_from = head;
-                        }
-                        _ => (),
-                    }
-                }
-                writeln!(output, "from :{}", original_from)?;
+                writeln!(output, "from :{}", self.mark(p))?;
             }
-            _ => {
-                if !heads.is_empty() {
-                    if let Some(head) = heads.get(branch) {
-                        writeln!(output, "from :{}", head)?;
-                    }
-                }
-            }
+            _ => ()
         }
-
-        heads.insert(branch.clone(), mark);
-        repository_heads.insert(branch.clone(), mark);
 
         debug!(
             "{: <15} {: <32} {: <64} {}",

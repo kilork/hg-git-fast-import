@@ -31,9 +31,6 @@ pub enum Cli {
     /// Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
     #[structopt(name = "multi")]
     Multi {
-        /// The Git repo to import to. Creates repo if it does not exist. Otherwise saved state must exist.
-        #[structopt(parse(from_os_str))]
-        git_repo: Option<PathBuf>,
         /// Repositories configuration in toml format.
         #[structopt(parse(from_os_str), long, short)]
         config: PathBuf,
@@ -43,7 +40,7 @@ pub enum Cli {
         /// Do not clean closed Mercurial branches.
         #[structopt(name = "no-clean-closed-branches", long)]
         no_clean_closed_branches: bool,
-        /// Compares resulting Git repo with Mercurial (only final state with subfolders).
+        /// Compares resulting Git repositories with Mercurial (only final state with subfolders).
         #[structopt(long)]
         verify: bool,
     },

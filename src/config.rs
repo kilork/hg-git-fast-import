@@ -37,13 +37,15 @@ impl Default for RepositoryConfig {
 
 #[derive(Deserialize, Serialize)]
 pub struct PathRepositoryConfig {
-    pub path: PathBuf,
+    pub path_hg: PathBuf,
+    pub path_git: PathBuf,
     #[serde(default)]
     pub config: RepositoryConfig,
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct MultiConfig {
+    pub path_git: PathBuf,
     pub repositories: Vec<PathRepositoryConfig>,
 }
 
@@ -56,17 +58,7 @@ pub struct Environment {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type", content = "value")]
 pub enum RepositorySavedState {
-    OffsetedRevisionSet(Vec<usize>),
-    HeadsAndOffsets {
-        offsets: Vec<usize>,
-        heads: HashMap<String, usize>,
-        repositories: HashMap<String, Repository>
-    },
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Repository {
-    pub heads: HashMap<String, usize>,
+    OffsetedRevision(usize),
 }
 
 #[cfg(test)]
@@ -75,28 +67,19 @@ mod tests {
 
     #[test]
     fn repository_saved_state_to_toml() {
-        let expected = "type = \"OffsetedRevisionSet\"\nvalue = [100]\n";
+        let expected = "type = \"OffsetedRevision\"\nvalue = 100\n";
         let result =
-            toml::to_string(&super::RepositorySavedState::OffsetedRevisionSet(vec![100])).unwrap();
-        assert_eq!(expected, result);
-    }
-
-    #[test]
-    fn repository_saved_state_with_heads_to_toml() {
-        let expected = "type = \"HeadsAndOffsets\"\n\n[value]\noffsets = []\n\n[value.heads]\n";
-        let result = toml::to_string(&super::RepositorySavedState::HeadsAndOffsets {
-            heads: vec![(String::from("Key"), 1usize)].into_iter().collect(),
-            offsets: vec![],
-            repositories: vec![].into_iter().collect(),
-        })
-        .unwrap();
+            toml::to_string(&super::RepositorySavedState::OffsetedRevision(100)).unwrap();
         assert_eq!(expected, result);
     }
 
     #[test]
     fn multiconfig_read_from_toml() {
-        let src = r#"[[repositories]]
-path = "001_hg"
+        let src = r#"path_git = "000_git"
+
+[[repositories]]
+path_hg = "001_hg"
+path_git = "001_git"
 
 [repositories.config]
 allow_unnamed_heads = true
@@ -112,14 +95,15 @@ branch_prefix = 'prefix3-'
 'branch1' = 'branch2'
 
 [[repositories]]
-path = "002_hg"
+path_hg = "002_hg"
+path_git = "002_git"
 
 "#;
         let result: super::MultiConfig = toml::from_str(src).unwrap();
         assert_eq!(2, result.repositories.len());
 
         let repository = &result.repositories[0];
-        assert_eq!(PathBuf::from("001_hg"), repository.path);
+        assert_eq!(PathBuf::from("001_hg"), repository.path_hg);
         assert!(repository.config.allow_unnamed_heads);
         assert_eq!(Some(1000), repository.config.offset);
         assert_eq!(Some("prefix1".into()), repository.config.path_prefix);
@@ -133,6 +117,6 @@ path = "002_hg"
             Some(&String::from("branch2"))
         );
 
-        assert_eq!(PathBuf::from("002_hg"), result.repositories[1].path);
+        assert_eq!(PathBuf::from("002_hg"), result.repositories[1].path_hg);
     }
 }

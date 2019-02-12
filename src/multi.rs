@@ -4,7 +4,7 @@ use std::path::Path;
 use log::{debug, info};
 
 use super::{
-    collections::conditional_multi_iter, config, MercurialRepo, RepositorySavedState,
+    config, MercurialRepo, RepositorySavedState,
     TargetRepository,
 };
 use crate::error::ErrorKind;
@@ -20,40 +20,35 @@ struct ImportingRepository<'a> {
 
 pub fn multi2git<P: AsRef<Path>>(
     verify: bool,
-    target: &mut TargetRepository,
     env: &config::Environment,
-    config: P,
+    config_filename: P,
     multi_config: &config::MultiConfig,
 ) -> Result<(), ErrorKind> {
-    let config_path = config.as_ref().parent();
+    let config_path = config_filename.as_ref().parent();
 
-    let repositories: Vec<_> = multi_config
+    multi_config
         .repositories
         .iter()
-        .map(|x| {
-            let path = if x.path.is_absolute() {
-                x.path.clone()
+        .for_each(|x| {
+            let path = if x.path_hg.is_absolute() {
+                x.path_hg.clone()
             } else {
                 config_path
-                    .map(|c| c.join(x.path.clone()))
-                    .unwrap_or(x.path.clone())
+                    .map(|c| c.join(x.path_hg.clone()))
+                    .unwrap_or(x.path_hg.clone())
             };
 
-            (
-                x,
-                match MercurialRepo::open(&path, &x.config, env) {
+                let mercurial_repo = match MercurialRepo::open(&path, &x.config, env) {
                     Ok(repo) => repo,
                     Err(ErrorKind::HgParserFailure(fail)) => {
                         panic!("Cannot open {:?}: {:?}", path, fail)
                     }
                     Err(other) => panic!("Cannot open {:?}: {:?}", path, other),
-                },
-            )
-        })
-        .collect();
-
+                };
+        });
+/*
     if repositories.iter().any(|(path_config, repo)| {
-        info!("Verifying heads in repository {:?}", path_config.path);
+        info!("Verifying heads in repository {:?}", path_config.path_hg);
         !repo
             .verify_heads(path_config.config.allow_unnamed_heads)
             .unwrap()
@@ -86,11 +81,7 @@ pub fn multi2git<P: AsRef<Path>>(
                 let min = saved_state
                     .as_ref()
                     .and_then(|x| match x {
-                        RepositorySavedState::OffsetedRevisionSet(saved_maxs)
-                        | RepositorySavedState::HeadsAndOffsets {
-                            offsets: saved_maxs,
-                            ..
-                        } => saved_maxs
+                        RepositorySavedState::OffsetedRevisionSet(saved_maxs) => saved_maxs
                             .iter()
                             .filter(|&&rev| rev >= offset && rev <= max + offset)
                             .map(|x| x - offset)
@@ -105,26 +96,15 @@ pub fn multi2git<P: AsRef<Path>>(
                     .map(|x| x.clone())
                     .unwrap_or_else(|| HashMap::new());
 
-                let heads = saved_state
-                    .as_ref()
-                    .and_then(|x| match x {
-                        RepositorySavedState::OffsetedRevisionSet(_) => None,
-                        RepositorySavedState::HeadsAndOffsets { repositories, .. } => repositories
-                            .get(path_config.path.to_str().unwrap())
-                            .map(|x| x.heads.clone()),
-                    })
-                    .unwrap_or_else(HashMap::new);
-
                 let importing_repository = ImportingRepository {
                     min,
                     max,
                     brmap,
-                    heads,
                     path_config,
                 };
                 info!(
                     "repo: {:?} min: {} max: {} offset: {:?}",
-                    importing_repository.path_config.path,
+                    importing_repository.path_config.path_hg,
                     importing_repository.min,
                     importing_repository.max,
                     importing_repository.path_config.config.offset
@@ -140,60 +120,13 @@ pub fn multi2git<P: AsRef<Path>>(
             .collect();
 
         let mut c: usize = 0;
-        let mut all_repo_iterators_iter = conditional_multi_iter(
-            all_repo_iterators,
-            |x| x.iter().filter_map(|x| x.map(|x| x.0.header.time)).min(),
-            |x, y| y == &x.map(|x| x.0.header.time),
-        );
-
-        let mut heads = saved_state
-            .as_ref()
-            .map(|x| match x {
-                RepositorySavedState::HeadsAndOffsets { heads, .. } => heads.clone(),
-                _ => HashMap::new(),
-            })
-            .unwrap_or_else(HashMap::new);
 
         info!("Exporting commits");
 
-        for (ref mut changelog, repo_index) in &mut all_repo_iterators_iter {
-            let importing_repository = &mut importing_repositories[repo_index];
-            let (_, repo) = &repositories[repo_index];
-            c = repo.export_commit(
-                changelog,
-                importing_repository.max,
-                c,
-                &mut importing_repository.brmap,
-                &mut importing_repository.heads,
-                &mut heads,
-                output,
-            )?;
-        }
-
-        for (importing_repo, (_, repo)) in importing_repositories.iter().zip(repositories.iter()) {
-            c = repo.export_tags(importing_repo.min..importing_repo.max, c, output)?;
-        }
         info!("Issued {} commands", c);
         info!("Saving state...");
         target
-            .save_state(RepositorySavedState::HeadsAndOffsets {
-                offsets: importing_repositories
-                    .iter()
-                    .map(|x| x.max + x.path_config.config.offset.unwrap_or(0))
-                    .collect(),
-                heads,
-                repositories: importing_repositories
-                    .iter()
-                    .map(|x| {
-                        (
-                            x.path_config.path.to_str().unwrap().into(),
-                            config::Repository {
-                                heads: x.heads.clone(),
-                            },
-                        )
-                    })
-                    .collect(),
-            })
+            .save_state(RepositorySavedState::OffsetedRevision(importing_repository.max))
             .unwrap();
     }
 
@@ -213,27 +146,6 @@ pub fn multi2git<P: AsRef<Path>>(
                 .unwrap();
         }
     }
-
+*/
     Ok(())
-}
-
-struct ChangesetIterWrapper<'a> {
-    repo_index: usize,
-    changeset_iter: ChangesetIter<'a>,
-}
-
-impl<'a> ChangesetIterWrapper<'a> {
-    fn new(changeset_iter: ChangesetIter<'a>, repo_index: usize) -> Self {
-        Self {
-            repo_index,
-            changeset_iter,
-        }
-    }
-}
-impl<'a> Iterator for ChangesetIterWrapper<'a> {
-    type Item = (Changeset, usize);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.changeset_iter.next().map(|x| (x, self.repo_index))
-    }
 }

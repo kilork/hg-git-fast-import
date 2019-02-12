@@ -70,7 +70,6 @@ fn main() {
             }
         }
         Multi {
-            git_repo,
             config,
             authors,
             no_clean_closed_branches,
@@ -82,19 +81,7 @@ fn main() {
             let config_str = read_file(&config).unwrap();
             let multi_config = toml::from_str(&config_str).unwrap();
             info!("Config loaded");
-            if let Some(git_repo) = git_repo {
-                let mut git_target_repository = GitTargetRepository::open(git_repo);
-                multi2git(
-                    verify,
-                    &mut git_target_repository,
-                    &env,
-                    &config,
-                    &multi_config,
-                )
-                .unwrap();
-            } else {
-                unimplemented!();
-            }
+            multi2git(verify, &env, &config, &multi_config).unwrap();
             info!("Finished. Time elapsed: {:?}", start_time.elapsed());
         }
     }
