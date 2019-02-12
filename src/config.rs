@@ -68,8 +68,7 @@ mod tests {
     #[test]
     fn repository_saved_state_to_toml() {
         let expected = "type = \"OffsetedRevision\"\nvalue = 100\n";
-        let result =
-            toml::to_string(&super::RepositorySavedState::OffsetedRevision(100)).unwrap();
+        let result = toml::to_string(&super::RepositorySavedState::OffsetedRevision(100)).unwrap();
         assert_eq!(expected, result);
     }
 

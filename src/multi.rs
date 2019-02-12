@@ -3,11 +3,9 @@ use std::path::Path;
 
 use log::{debug, info};
 
-use super::{
-    config, MercurialRepo, RepositorySavedState,
-    TargetRepository,
-};
+use super::{config, MercurialRepo, RepositorySavedState, TargetRepository};
 use crate::error::ErrorKind;
+use crate::git::GitTargetRepository;
 use hg_parser::{Changeset, ChangesetIter};
 
 struct ImportingRepository<'a> {
@@ -26,126 +24,93 @@ pub fn multi2git<P: AsRef<Path>>(
 ) -> Result<(), ErrorKind> {
     let config_path = config_filename.as_ref().parent();
 
-    multi_config
-        .repositories
-        .iter()
-        .for_each(|x| {
-            let path = if x.path_hg.is_absolute() {
-                x.path_hg.clone()
-            } else {
-                config_path
-                    .map(|c| c.join(x.path_hg.clone()))
-                    .unwrap_or(x.path_hg.clone())
-            };
+    for x in &multi_config.repositories {
+        let path = if x.path_hg.is_absolute() {
+            x.path_hg.clone()
+        } else {
+            config_path
+                .map(|c| c.join(x.path_hg.clone()))
+                .unwrap_or(x.path_hg.clone())
+        };
 
-                let mercurial_repo = match MercurialRepo::open(&path, &x.config, env) {
-                    Ok(repo) => repo,
-                    Err(ErrorKind::HgParserFailure(fail)) => {
-                        panic!("Cannot open {:?}: {:?}", path, fail)
-                    }
-                    Err(other) => panic!("Cannot open {:?}: {:?}", path, other),
-                };
-        });
-/*
-    if repositories.iter().any(|(path_config, repo)| {
-        info!("Verifying heads in repository {:?}", path_config.path_hg);
-        !repo
-            .verify_heads(path_config.config.allow_unnamed_heads)
+        info!("Reading repo: {:?}", x.path_hg);
+        let mercurial_repo = match MercurialRepo::open(&path, &x.config, env) {
+            Ok(repo) => repo,
+            Err(ErrorKind::HgParserFailure(fail)) => panic!("Cannot open {:?}: {:?}", path, fail),
+            Err(other) => panic!("Cannot open {:?}: {:?}", path, other),
+        };
+
+        info!("Verifying heads in repository {:?}", x.path_hg);
+        if !mercurial_repo
+            .verify_heads(x.config.allow_unnamed_heads)
             .unwrap()
-    }) {
-        return Err(ErrorKind::VerifyFailure("Verify heads failed".into()));
-    }
+        {
+            return Err(ErrorKind::VerifyFailure("Verify heads failed".into()));
+        }
 
-    {
-        let mut all_repo_iterators = Vec::new();
+        let tip = mercurial_repo.changelog_len().unwrap();
 
-        info!("Trying to load state");
-        let (output, saved_state) = target.init().unwrap();
+        let max = if let Some(limit_high) = x.config.limit_high {
+            tip.min(limit_high)
+        } else {
+            tip
+        };
 
-        info!("Checking revision log to create single list of revisions in historical order");
+        let offset = x.config.offset.unwrap_or(0);
 
-        let mut importing_repositories: Vec<_> = repositories
-            .iter()
-            .enumerate()
-            .map(|(index, (path_config, repo))| {
-                let tip = repo.changelog_len().unwrap();
-
-                let max = if let Some(limit_high) = path_config.config.limit_high {
-                    tip.min(limit_high)
-                } else {
-                    tip
-                };
-
-                let offset = path_config.config.offset.unwrap_or(0);
-
-                let min = saved_state
-                    .as_ref()
-                    .and_then(|x| match x {
-                        RepositorySavedState::OffsetedRevisionSet(saved_maxs) => saved_maxs
-                            .iter()
-                            .filter(|&&rev| rev >= offset && rev <= max + offset)
-                            .map(|x| x - offset)
-                            .next(),
-                    })
-                    .unwrap_or(0);
-
-                let brmap = path_config
-                    .config
-                    .branches
-                    .as_ref()
-                    .map(|x| x.clone())
-                    .unwrap_or_else(|| HashMap::new());
-
-                let importing_repository = ImportingRepository {
-                    min,
-                    max,
-                    brmap,
-                    path_config,
-                };
-                info!(
-                    "repo: {:?} min: {} max: {} offset: {:?}",
-                    importing_repository.path_config.path_hg,
-                    importing_repository.min,
-                    importing_repository.max,
-                    importing_repository.path_config.config.offset
-                );
-
-                all_repo_iterators.push(ChangesetIterWrapper::new(
-                    repo.range(importing_repository.min..importing_repository.max),
-                    index,
-                ));
-
-                importing_repository
-            })
-            .collect();
+        let mut git_repo = GitTargetRepository::open(&x.path_git);
 
         let mut c: usize = 0;
+        {
+            let (output, saved_state) = git_repo.init().unwrap();
 
-        info!("Exporting commits");
+            let min = if let Some(saved_state) = saved_state.as_ref() {
+                match saved_state {
+                    RepositorySavedState::OffsetedRevision(rev) => rev - offset,
+                }
+            } else {
+                0
+            };
 
+            let mut brmap = x
+                .config
+                .branches
+                .as_ref()
+                .map(|x| x.clone())
+                .unwrap_or_else(|| HashMap::new());
+
+            info!(
+                "repo: {:?} min: {} max: {} offset: {:?}",
+                x.path_hg, min, max, x.config.offset
+            );
+            info!("Exporting commits from {}", min);
+
+            for rev in min..max {
+                debug!("Exporting commit: {}", rev);
+                for mut changeset in mercurial_repo.range(min..max) {
+                    c = mercurial_repo.export_commit(&mut changeset, max, c, &mut brmap, output)?;
+                }
+            }
+
+            c = mercurial_repo.export_tags(min..max, c, output)?;
+        }
         info!("Issued {} commands", c);
         info!("Saving state...");
-        target
-            .save_state(RepositorySavedState::OffsetedRevision(importing_repository.max))
+        git_repo
+            .save_state(RepositorySavedState::OffsetedRevision(max + offset))
             .unwrap();
-    }
 
-    target.finish().unwrap();
+        git_repo.finish().unwrap();
 
-    if verify {
-        for (repository_config, repo) in repositories {
-            target
+        if verify {
+            git_repo
                 .verify(
-                    repo.path().to_str().unwrap(),
-                    repository_config
-                        .config
-                        .path_prefix
-                        .as_ref()
-                        .map(|x| &x[..]),
+                    mercurial_repo.path().to_str().unwrap(),
+                    x.config.path_prefix.as_ref().map(|x| &x[..]),
                 )
                 .unwrap();
         }
     }
-*/
+
     Ok(())
 }

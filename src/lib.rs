@@ -213,7 +213,7 @@ impl<'a> MercurialRepo<'a> {
             (Some(p), None) | (None, Some(p)) => {
                 writeln!(output, "from :{}", self.mark(p))?;
             }
-            _ => ()
+            _ => (),
         }
 
         debug!(
