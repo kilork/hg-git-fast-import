@@ -1,19 +1,23 @@
 use std::collections::HashMap;
 use std::path::Path;
+use std::path::PathBuf;
 
 use log::{debug, info};
 
 use super::{config, MercurialRepo, RepositorySavedState, TargetRepository};
 use crate::error::ErrorKind;
 use crate::git::GitTargetRepository;
-use hg_parser::{Changeset, ChangesetIter};
 
-struct ImportingRepository<'a> {
-    min: usize,
-    max: usize,
-    brmap: HashMap<String, String>,
-    heads: HashMap<String, usize>,
-    path_config: &'a config::PathRepositoryConfig,
+fn construct_path<P: AsRef<Path>>(config_path: &Option<P>, target: P) -> PathBuf {
+    let target = target.as_ref();
+    if target.is_absolute() {
+        target.into()
+    } else {
+        config_path
+            .as_ref()
+            .map(|c| c.as_ref().join(target))
+            .unwrap_or_else(|| target.into())
+    }
 }
 
 pub fn multi2git<P: AsRef<Path>>(
@@ -25,19 +29,15 @@ pub fn multi2git<P: AsRef<Path>>(
     let config_path = config_filename.as_ref().parent();
 
     for x in &multi_config.repositories {
-        let path = if x.path_hg.is_absolute() {
-            x.path_hg.clone()
-        } else {
-            config_path
-                .map(|c| c.join(x.path_hg.clone()))
-                .unwrap_or(x.path_hg.clone())
-        };
+        let path_hg = construct_path(&config_path, &x.path_hg);
 
         info!("Reading repo: {:?}", x.path_hg);
-        let mercurial_repo = match MercurialRepo::open(&path, &x.config, env) {
+        let mercurial_repo = match MercurialRepo::open(&path_hg, &x.config, env) {
             Ok(repo) => repo,
-            Err(ErrorKind::HgParserFailure(fail)) => panic!("Cannot open {:?}: {:?}", path, fail),
-            Err(other) => panic!("Cannot open {:?}: {:?}", path, other),
+            Err(ErrorKind::HgParserFailure(fail)) => {
+                panic!("Cannot open {:?}: {:?}", path_hg, fail)
+            }
+            Err(other) => panic!("Cannot open {:?}: {:?}", path_hg, other),
         };
 
         info!("Verifying heads in repository {:?}", x.path_hg);
@@ -58,7 +58,9 @@ pub fn multi2git<P: AsRef<Path>>(
 
         let offset = x.config.offset.unwrap_or(0);
 
-        let mut git_repo = GitTargetRepository::open(&x.path_git);
+        let path_git = construct_path(&config_path, &x.path_git);
+
+        let mut git_repo = GitTargetRepository::open(path_git);
 
         let mut c: usize = 0;
         {
@@ -85,11 +87,8 @@ pub fn multi2git<P: AsRef<Path>>(
             );
             info!("Exporting commits from {}", min);
 
-            for rev in min..max {
-                debug!("Exporting commit: {}", rev);
-                for mut changeset in mercurial_repo.range(min..max) {
-                    c = mercurial_repo.export_commit(&mut changeset, max, c, &mut brmap, output)?;
-                }
+            for mut changeset in mercurial_repo.range(min..max) {
+                c = mercurial_repo.export_commit(&mut changeset, max, c, &mut brmap, output)?;
             }
 
             c = mercurial_repo.export_tags(min..max, c, output)?;

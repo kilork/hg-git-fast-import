@@ -51,11 +51,8 @@ pub fn hg2git<P: AsRef<Path>>(
 
         info!("Exporting commits from {}", min);
 
-        for rev in min..max {
-            debug!("exporting commit: {}", rev);
-            for mut changeset in repo.range(min..max) {
-                c = repo.export_commit(&mut changeset, max, c, &mut brmap, output)?;
-            }
+        for mut changeset in repo.range(min..max) {
+            c = repo.export_commit(&mut changeset, max, c, &mut brmap, output)?;
         }
 
         c = repo.export_tags(min..max, c, output)?;
