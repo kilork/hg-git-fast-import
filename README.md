@@ -63,9 +63,30 @@ Import of single repository:
         <hg_repo>     The Mercurial repo for import to git
         <git_repo>    The Git repo to import to. Creates repo if it does not exist. Otherwise saved state must exist.
 
+Import of multiple repositories:
+
+    $ hg-git-fast-import multi --help
+    hg-git-fast-import-multi 0.1.0
+    Alexander Korolev <kilork@yandex.ru>
+    Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
+
+    USAGE:
+        hg-git-fast-import multi [FLAGS] [OPTIONS] --config <config>
+
+    FLAGS:
+        -h, --help                        Prints help information
+            --no-clean-closed-branches    Do not clean closed Mercurial branches.
+        -V, --version                     Prints version information
+            --verify                      Compares resulting Git repositories with Mercurial (only final state with
+                                        subfolders).
+
+    OPTIONS:
+        -a, --authors <authors>    Authors remapping in toml format.
+        -c, --config <config>      Repositories configuration in toml format.
+
 ## Requirements
 
-- Rust 1.31
+- Rust 1.32
 - Diff 2.8
 - Git 2.19
 - Mercurial 4.8
@@ -93,11 +114,3 @@ To mount current directory with repositories and run ```hg-git-fast-import``` co
 By default this will mount current directory to ```/repositories``` dir inside docker container. This can be overriden by usage of env variable:
 
     HG_GIT_FAST_IMPORT_VOLUME=~/sandbox:/sandbox ./run.sh single /sandbox/source_hg /sandbox/target_git
-
-## Implementation details
-
-**hg-git-fast-import** uses Python Mercurial libraries to access repository info and converts it to Git fast-import format. This is done by usage of [rust-python](https://github.com/dgrunwald/rust-cpython) Rust crate. It is slower than [original](https://github.com/frej/fast-export) Python implementation. Why not use just Python? I really like Python, but I also huge fun of Rust Language and found personally it is really nice fit for writing CLI apps. Especially knowing Rust has special [focus](https://www.rust-lang.org/what/cli) on CLI apps support.
-
-In any case it is open source and you can volunteer and convert it back to python completely if performance is a blocker for you. In this section we describe technical details which can be important for such conversion.
-
-Also, it is known - Mercurial is doing own Rust development, I expect to remove python parts in favor of either clean Rust implementation or usage of [Mercurial CommandServer](https://www.mercurial-scm.org/wiki/CommandServer).
