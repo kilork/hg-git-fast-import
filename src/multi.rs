@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::path::PathBuf;
 
-use log::{debug, info};
+use log::info;
 
 use super::{config, MercurialRepo, RepositorySavedState, TargetRepository};
 use crate::error::ErrorKind;
@@ -32,6 +32,59 @@ pub fn multi2git<P: AsRef<Path>>(
         export_repository(&config_path, repo, env, verify)?;
     }
 
+    let path_git = construct_path(&config_path, &multi_config.path_git);
+
+    let git_repo = GitTargetRepository::open(&path_git);
+
+    let new_rerository = !path_git.exists();
+
+    let remotes = if new_rerository {
+        git_repo.create_repo()?;
+        HashSet::new()
+    } else {
+        git_repo.remote_list()?
+    };
+
+    let mut merge = HashMap::new();
+    for repo in &multi_config.repositories {
+        let alias = repo
+            .alias
+            .as_ref()
+            .unwrap_or_else(|| repo.config.path_prefix.as_ref().unwrap());
+        if !remotes.contains(alias) {
+            git_repo.remote_add(
+                alias,
+                construct_path(&config_path, &repo.path_git)
+                    .canonicalize()?
+                    .to_str()
+                    .unwrap(),
+            )?;
+        }
+        if let Some(merged_branches) = &repo.merged_branches {
+            for (branch_to, branch_from) in merged_branches {
+                merge
+                    .entry(branch_to)
+                    .or_insert_with(Vec::new)
+                    .push(format!("{}/{}", alias, branch_from));
+            }
+        }
+    }
+
+    git_repo.fetch_all()?;
+
+    for (branch_to, branches_from) in merge {
+        git_repo.checkout(branch_to)?;
+
+        if new_rerository {
+            for branch_from in branches_from {
+                git_repo.merge_unrelated(&vec![branch_from.as_ref()])?;
+            }
+        } else {
+            let branches_from_str: Vec<_> = branches_from.iter().map(|x| x.as_ref()).collect();
+            git_repo.merge_unrelated(&branches_from_str)?;
+        }
+    }
+
     Ok(())
 }
 
@@ -57,7 +110,7 @@ fn export_repository(
 
     let tip = mercurial_repo.changelog_len()?;
 
-    let max = if let Some(limit_high) = repo.config.limit_high {
+    let to = if let Some(limit_high) = repo.config.limit_high {
         tip.min(limit_high)
     } else {
         tip
@@ -69,11 +122,11 @@ fn export_repository(
 
     let mut git_repo = GitTargetRepository::open(path_git);
 
-    let mut c: usize = 0;
+    let mut counter: usize = 0;
     {
-        let (output, saved_state) = git_repo.init()?;
+        let (output, saved_state) = git_repo.start_import()?;
 
-        let min = if let Some(saved_state) = saved_state.as_ref() {
+        let from = if let Some(saved_state) = saved_state.as_ref() {
             match saved_state {
                 RepositorySavedState::OffsetedRevision(rev) => rev - offset,
             }
@@ -89,20 +142,20 @@ fn export_repository(
             .unwrap_or_else(|| HashMap::new());
 
         info!(
-            "repo: {:?} min: {} max: {} offset: {:?}",
-            repo.path_hg, min, max, repo.config.offset
+            "Exporting commits from repo: {:?} from {} to {} offset {:?}",
+            repo.path_hg, from, to, repo.config.offset
         );
-        info!("Exporting commits from {}", min);
 
-        for mut changeset in mercurial_repo.range(min..max) {
-            c = mercurial_repo.export_commit(&mut changeset, max, c, &mut brmap, output)?;
+        for mut changeset in mercurial_repo.range(from..to) {
+            counter = mercurial_repo.export_commit(&mut changeset, counter, &mut brmap, output)?;
         }
 
-        c = mercurial_repo.export_tags(min..max, c, output)?;
+        counter = mercurial_repo.export_tags(from..to, counter, output)?;
     }
-    info!("Issued {} commands", c);
+    info!("Issued {} commands", counter);
+
     info!("Saving state...");
-    git_repo.save_state(RepositorySavedState::OffsetedRevision(max + offset))?;
+    git_repo.save_state(RepositorySavedState::OffsetedRevision(to + offset))?;
 
     git_repo.finish()?;
 

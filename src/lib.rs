@@ -1,7 +1,8 @@
 use lazy_static::lazy_static;
+use std::collections::HashSet;
 use std::ops::Range;
 
-use log::{debug, error, info, trace, warn};
+use log::{info, trace};
 
 use regex::Regex;
 
@@ -55,7 +56,7 @@ impl From<std::io::Error> for TargetRepositoryError {
 }
 
 pub trait TargetRepository {
-    fn init(
+    fn start_import(
         &mut self,
     ) -> Result<(&mut Write, Option<config::RepositorySavedState>), TargetRepositoryError>;
 
@@ -69,12 +70,32 @@ pub trait TargetRepository {
         Ok(())
     }
 
-    fn save_state(&self, _state: RepositorySavedState) -> std::io::Result<()> {
+    fn save_state(&self, _state: RepositorySavedState) -> Result<(), TargetRepositoryError> {
         Ok(())
     }
 
     fn get_saved_state(&self) -> Option<&RepositorySavedState> {
         None
+    }
+
+    fn remote_list(&self) -> Result<HashSet<String>, TargetRepositoryError> {
+        unimplemented!();
+    }
+
+    fn remote_add(&self, _name: &str, _url: &str) -> Result<(), TargetRepositoryError> {
+        unimplemented!();
+    }
+
+    fn checkout(&self, _branch: &str) -> Result<(), TargetRepositoryError> {
+        unimplemented!();
+    }
+
+    fn fetch_all(&self) -> Result<(), TargetRepositoryError> {
+        unimplemented!();
+    }
+
+    fn merge_unrelated(&self, _branches: &[&str]) -> Result<(), TargetRepositoryError> {
+        unimplemented!();
     }
 }
 
@@ -103,7 +124,7 @@ impl<'a> MercurialRepo<'a> {
         self.path.as_path()
     }
 
-    fn verify_heads(&self, allow_unnamed_heads: bool) -> Result<bool, ErrorKind> {
+    fn verify_heads(&self, _allow_unnamed_heads: bool) -> Result<bool, ErrorKind> {
         Ok(true)
     }
 
@@ -152,7 +173,6 @@ impl<'a> MercurialRepo<'a> {
     fn export_commit(
         &self,
         changeset: &mut Changeset,
-        max: usize,
         count: usize,
         brmap: &mut HashMap<String, String>,
         output: &mut Write,

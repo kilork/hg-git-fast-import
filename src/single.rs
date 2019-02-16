@@ -22,7 +22,7 @@ pub fn hg2git<P: AsRef<Path>>(
 
     let tip = repo.changelog_len()?;
 
-    let max = if let Some(limit_high) = repository_config.limit_high {
+    let to = if let Some(limit_high) = repository_config.limit_high {
         tip.min(limit_high)
     } else {
         tip
@@ -34,12 +34,12 @@ pub fn hg2git<P: AsRef<Path>>(
         .as_ref()
         .map(|x| x.clone())
         .unwrap_or_else(|| HashMap::new());
-    let mut c: usize = 0;
+    let mut counter: usize = 0;
 
     {
-        let (output, saved_state) = target.init().unwrap();
+        let (output, saved_state) = target.start_import()?;
 
-        let min = if let Some(saved_state) = saved_state.as_ref() {
+        let from = if let Some(saved_state) = saved_state.as_ref() {
             match saved_state {
                 RepositorySavedState::OffsetedRevision(rev) => {
                     rev - repo.config.offset.unwrap_or(0)
@@ -49,31 +49,27 @@ pub fn hg2git<P: AsRef<Path>>(
             0
         };
 
-        info!("Exporting commits from {}", min);
+        info!("Exporting commits from {}", from);
 
-        for mut changeset in repo.range(min..max) {
-            c = repo.export_commit(&mut changeset, max, c, &mut brmap, output)?;
+        for mut changeset in repo.range(from..to) {
+            counter = repo.export_commit(&mut changeset, counter, &mut brmap, output)?;
         }
 
-        c = repo.export_tags(min..max, c, output)?;
+        counter = repo.export_tags(from..to, counter, output)?;
     }
-    info!("Issued {} commands", c);
+    info!("Issued {} commands", counter);
     info!("Saving state...");
-    target
-        .save_state(RepositorySavedState::OffsetedRevision(
-            max + repository_config.offset.unwrap_or(0),
-        ))
-        .unwrap();
+    target.save_state(RepositorySavedState::OffsetedRevision(
+        to + repository_config.offset.unwrap_or(0),
+    ))?;
 
-    target.finish().unwrap();
+    target.finish()?;
 
     if verify {
-        target
-            .verify(
-                repourl.as_ref().to_str().unwrap(),
-                repository_config.path_prefix.as_ref().map(|x| &x[..]),
-            )
-            .unwrap();
+        target.verify(
+            repourl.as_ref().to_str().unwrap(),
+            repository_config.path_prefix.as_ref().map(|x| &x[..]),
+        )?;
     }
 
     Ok(())

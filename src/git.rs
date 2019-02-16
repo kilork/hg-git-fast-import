@@ -1,9 +1,10 @@
 use super::read_file;
 use super::{config::RepositorySavedState, TargetRepository, TargetRepositoryError};
+use std::collections::HashSet;
 use std::path::Path;
 use std::path::PathBuf;
 
-use log::{error, info};
+use log::{debug, error, info};
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
@@ -20,7 +21,7 @@ impl<'a> From<std::io::StdoutLock<'a>> for StdoutTargetRepository<'a> {
 }
 
 impl<'a> TargetRepository for StdoutTargetRepository<'a> {
-    fn init(
+    fn start_import(
         &mut self,
     ) -> Result<(&mut Write, Option<RepositorySavedState>), TargetRepositoryError> {
         Ok((&mut self.stdoutlock, None))
@@ -50,10 +51,37 @@ impl GitTargetRepository {
         saved_state.set_extension("lock");
         saved_state
     }
+
+    pub fn create_repo(&self) -> Result<(), TargetRepositoryError> {
+        let path = &self.path;
+        info!("Creating new dir");
+        fs::create_dir_all(path)?;
+
+        info!("Init Git repo");
+        let status = Command::new("git").arg("init").current_dir(path).status()?;
+        if !status.success() {
+            error!("Cannot init Git repo");
+            return Err(TargetRepositoryError::CannotInitRepo(status));
+        }
+
+        info!("Configure Git repo");
+        let status = Command::new("git")
+            .args(&["config", "core.ignoreCase", "false"])
+            .current_dir(path)
+            .status()?;
+        if !status.success() {
+            error!("Cannot configure Git repo");
+            return Err(TargetRepositoryError::CannotConfigRepo(status));
+        }
+
+        info!("New Git repo initialization done");
+
+        Ok(())
+    }
 }
 
 impl TargetRepository for GitTargetRepository {
-    fn init(
+    fn start_import(
         &mut self,
     ) -> Result<(&mut Write, Option<RepositorySavedState>), TargetRepositoryError> {
         let path = &self.path;
@@ -80,27 +108,7 @@ impl TargetRepository for GitTargetRepository {
                 return Err(TargetRepositoryError::IsNotDir);
             }
         } else {
-            info!("Creating new dir");
-            fs::create_dir_all(path)?;
-
-            info!("Init Git repo");
-            let status = Command::new("git").arg("init").current_dir(path).status()?;
-            if !status.success() {
-                error!("Cannot init Git repo");
-                return Err(TargetRepositoryError::CannotInitRepo(status));
-            }
-
-            info!("Configure Git repo");
-            let status = Command::new("git")
-                .args(&["config", "core.ignoreCase", "false"])
-                .current_dir(path)
-                .status()?;
-            if !status.success() {
-                error!("Cannot configure Git repo");
-                return Err(TargetRepositoryError::CannotConfigRepo(status));
-            }
-
-            info!("New Git repo initialization done");
+            self.create_repo()?;
             saved_state = None;
         }
 
@@ -135,9 +143,7 @@ impl TargetRepository for GitTargetRepository {
             Command::new("git")
                 .args(&["checkout", "HEAD"])
                 .current_dir(path)
-                .spawn()
-                .unwrap()
-                .wait()
+                .status()
                 .unwrap()
         } else {
             error!("Git fast-import failed.");
@@ -148,9 +154,7 @@ impl TargetRepository for GitTargetRepository {
             Command::new("git")
                 .args(&["reset", "--hard"])
                 .current_dir(path)
-                .spawn()
-                .unwrap()
-                .wait()
+                .status()
                 .unwrap()
         } else {
             panic!("Cannot reset Git repo.")
@@ -160,9 +164,7 @@ impl TargetRepository for GitTargetRepository {
             Command::new("git")
                 .args(&["clean", "-d", "-x", "-f"])
                 .current_dir(path)
-                .spawn()
-                .unwrap()
-                .wait()
+                .status()
                 .unwrap()
         } else {
             panic!("Cannot reset Git repo.")
@@ -214,13 +216,78 @@ impl TargetRepository for GitTargetRepository {
         self.saved_state.as_ref()
     }
 
-    fn save_state(&self, state: RepositorySavedState) -> std::io::Result<()> {
+    fn save_state(&self, state: RepositorySavedState) -> Result<(), TargetRepositoryError> {
         let path = &self.path;
         info!("Saving state to Git repo: {}", path.to_str().unwrap());
         let saved_state_path = self.get_saved_state_path();
         let toml = toml::to_string(&state).unwrap();
         let mut f = File::create(&saved_state_path)?;
         f.write_all(toml.as_bytes())?;
+        Ok(())
+    }
+
+    fn remote_list(&self) -> Result<HashSet<String>, TargetRepositoryError> {
+        debug!("git remote");
+        let output = Command::new("git")
+            .arg("remote")
+            .current_dir(&self.path)
+            .output()?;
+        Ok(output
+            .stdout
+            .split(|&x| x == b'\n')
+            .filter_map(|x| {
+                if !x.is_empty() {
+                    Some(std::str::from_utf8(x).unwrap().into())
+                } else {
+                    None
+                }
+            })
+            .collect())
+    }
+
+    fn remote_add(&self, name: &str, url: &str) -> Result<(), TargetRepositoryError> {
+        debug!("git remote add {} {}", name, url);
+        Command::new("git")
+            .args(&["remote", "add", name, url])
+            .current_dir(&self.path)
+            .status()?;
+        Ok(())
+    }
+
+    fn checkout(&self, branch: &str) -> Result<(), TargetRepositoryError> {
+        debug!("git checkout -B {}", branch);
+        Command::new("git")
+            .args(&["checkout", "-B", branch])
+            .current_dir(&self.path)
+            .status()?;
+        Ok(())
+    }
+
+    fn merge_unrelated(&self, branches: &[&str]) -> Result<(), TargetRepositoryError> {
+        debug!(
+            "git merge -n --allow-unrelated-histories --no-edit {}",
+            branches.join(" ")
+        );
+        Command::new("git")
+            .args(&["merge", "-n", "--allow-unrelated-histories", "--no-edit"])
+            .args(branches)
+            .current_dir(&self.path)
+            .status()?;
+        Ok(())
+    }
+
+    fn fetch_all(&self) -> Result<(), TargetRepositoryError> {
+        debug!("git fetch -q --all");
+        Command::new("git")
+            .args(&["fetch", "-q", "--all"])
+            .current_dir(&self.path)
+            .status()?;
+
+        debug!("git fetch -q --tags");
+        Command::new("git")
+            .args(&["fetch", "-q", "--tags"])
+            .current_dir(&self.path)
+            .status()?;
         Ok(())
     }
 }
