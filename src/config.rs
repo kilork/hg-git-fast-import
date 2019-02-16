@@ -9,6 +9,7 @@ pub struct RepositoryConfig {
     pub offset: Option<usize>,
     pub authors: Option<HashMap<String, String>>,
     pub branches: Option<HashMap<String, String>>,
+    #[serde(default)]
     pub allow_unnamed_heads: bool,
     #[serde(skip_deserializing)]
     pub limit_high: Option<usize>,
@@ -25,7 +26,7 @@ impl Default for RepositoryConfig {
             offset: None,
             authors: None,
             branches: None,
-            allow_unnamed_heads: false,
+            allow_unnamed_heads: true,
             limit_high: None,
             path_prefix: None,
             branch_prefix: None,
@@ -37,10 +38,12 @@ impl Default for RepositoryConfig {
 
 #[derive(Deserialize, Serialize)]
 pub struct PathRepositoryConfig {
+    pub alias: Option<String>,
     pub path_hg: PathBuf,
     pub path_git: PathBuf,
     #[serde(default)]
     pub config: RepositoryConfig,
+    pub merged_branches: Option<HashMap<String, String>>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -94,6 +97,7 @@ branch_prefix = 'prefix3-'
 'branch1' = 'branch2'
 
 [[repositories]]
+alias = "another_002"
 path_hg = "002_hg"
 path_git = "002_git"
 

@@ -4,3 +4,4 @@ test_run*
 /examples/private_*.rs
 callgrind.*
 /.git.old
+Cargo.lock

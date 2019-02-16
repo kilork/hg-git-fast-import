@@ -186,7 +186,7 @@ impl TargetRepository for GitTargetRepository {
         );
 
         info!(
-            "Mercurial (source): {} Git(target): {}",
+            "Verify - Mercurial (source): {} vs Git (target): {}",
             verified_repo, path
         );
         let status = Command::new("diff")
@@ -201,9 +201,7 @@ impl TargetRepository for GitTargetRepository {
                 verified_repo,
                 &path,
             ])
-            .spawn()
-            .unwrap()
-            .wait()
+            .status()
             .unwrap();
         if status.success() {
             Ok(())

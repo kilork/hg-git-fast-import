@@ -1,6 +1,7 @@
 #[derive(Debug)]
 pub enum ErrorKind {
     HgParserFailure(hg_parser::ErrorKind),
+    Target(crate::TargetRepositoryError),
     Encoding(std::str::Utf8Error),
     IO(std::io::Error),
     VerifyFailure(String),
@@ -21,5 +22,11 @@ impl From<std::str::Utf8Error> for ErrorKind {
 impl From<std::io::Error> for ErrorKind {
     fn from(value: std::io::Error) -> Self {
         ErrorKind::IO(value)
+    }
+}
+
+impl From<crate::TargetRepositoryError> for ErrorKind {
+    fn from(value: crate::TargetRepositoryError) -> Self {
+        ErrorKind::Target(value)
     }
 }

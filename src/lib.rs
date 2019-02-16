@@ -217,7 +217,7 @@ impl<'a> MercurialRepo<'a> {
             _ => (),
         }
 
-        debug!(
+        info!(
             "{: <15} {: <32} {: <64} {}",
             format!("{}({})", mark, revision.0),
             branch,
