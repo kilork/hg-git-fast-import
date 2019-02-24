@@ -10,10 +10,14 @@ use super::{config, MercurialRepo, RepositorySavedState, TargetRepository};
 pub fn hg2git<P: AsRef<Path>>(
     repourl: P,
     verify: bool,
+    git_active_branches: Option<usize>,
     target: &mut TargetRepository,
     env: &config::Environment,
     repository_config: &config::RepositoryConfig,
 ) -> Result<(), ErrorKind> {
+    debug!("Config: {:?}", repository_config);
+    debug!("Environment: {:?}", env);
+
     let repo = MercurialRepo::open(repourl.as_ref(), repository_config, env)?;
 
     if !repo.verify_heads(repository_config.allow_unnamed_heads)? {
@@ -37,7 +41,7 @@ pub fn hg2git<P: AsRef<Path>>(
     let mut counter: usize = 0;
 
     {
-        let (output, saved_state) = target.start_import()?;
+        let (output, saved_state) = target.start_import(git_active_branches)?;
 
         let from = if let Some(saved_state) = saved_state.as_ref() {
             match saved_state {

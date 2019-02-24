@@ -23,6 +23,7 @@ impl<'a> From<std::io::StdoutLock<'a>> for StdoutTargetRepository<'a> {
 impl<'a> TargetRepository for StdoutTargetRepository<'a> {
     fn start_import(
         &mut self,
+        _git_active_branches: Option<usize>,
     ) -> Result<(&mut Write, Option<RepositorySavedState>), TargetRepositoryError> {
         Ok((&mut self.stdoutlock, None))
     }
@@ -83,6 +84,7 @@ impl GitTargetRepository {
 impl TargetRepository for GitTargetRepository {
     fn start_import(
         &mut self,
+        git_active_branches: Option<usize>,
     ) -> Result<(&mut Write, Option<RepositorySavedState>), TargetRepositoryError> {
         let path = &self.path;
         let saved_state;
@@ -112,17 +114,16 @@ impl TargetRepository for GitTargetRepository {
             saved_state = None;
         }
 
-        self.fast_import_cmd = Some(
-            Command::new("git")
-                .args(&[
-                    "fast-import",
-                    "--export-marks=.git/hg-git-fast-import.marks",
-                    "--import-marks-if-exists=.git/hg-git-fast-import.marks",
-                ])
-                .current_dir(path)
-                .stdin(Stdio::piped())
-                .spawn()?,
-        );
+        let mut git = Command::new("git");
+        let mut git_cmd = git.args(&[
+            "fast-import",
+            "--export-marks=.git/hg-git-fast-import.marks",
+            "--import-marks-if-exists=.git/hg-git-fast-import.marks",
+        ]);
+        if let Some(git_active_branches) = git_active_branches {
+            git_cmd = git_cmd.arg(format!("--active-branches={}", git_active_branches));
+        }
+        self.fast_import_cmd = Some(git_cmd.current_dir(path).stdin(Stdio::piped()).spawn()?);
 
         Ok((
             self.fast_import_cmd

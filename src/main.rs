@@ -33,6 +33,7 @@ fn main() {
             no_clean_closed_branches,
             verify,
             limit_high,
+            git_active_branches,
         } => {
             let env = load_environment(&authors, no_clean_closed_branches);
 
@@ -51,6 +52,7 @@ fn main() {
                 hg2git(
                     hg_repo,
                     verify,
+                    git_active_branches,
                     &mut git_target_repository,
                     &env,
                     &repository_config,
@@ -63,6 +65,7 @@ fn main() {
                 hg2git(
                     hg_repo,
                     verify,
+                    git_active_branches,
                     &mut stdout_target,
                     &env,
                     &repository_config,
@@ -76,13 +79,14 @@ fn main() {
             authors,
             no_clean_closed_branches,
             verify,
+            git_active_branches,
         } => {
             let env = load_environment(&authors, no_clean_closed_branches);
             info!("Loading config");
             let config_str = read_file(&config).unwrap();
             let multi_config = toml::from_str(&config_str).unwrap();
             info!("Config loaded");
-            multi2git(verify, &env, &config, &multi_config).unwrap();
+            multi2git(verify, git_active_branches, &env, &config, &multi_config).unwrap();
             info!("Finished. Time elapsed: {:?}", start_time.elapsed());
         }
     }

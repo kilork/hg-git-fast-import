@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::path::PathBuf;
 
-use log::info;
+use log::{debug, info};
 
 use super::{config, MercurialRepo, RepositorySavedState, TargetRepository};
 use crate::error::ErrorKind;
@@ -22,14 +22,18 @@ fn construct_path<P: AsRef<Path>>(config_path: &Option<P>, target: P) -> PathBuf
 
 pub fn multi2git<P: AsRef<Path>>(
     verify: bool,
+    git_active_branches: Option<usize>,
     env: &config::Environment,
     config_filename: P,
     multi_config: &config::MultiConfig,
 ) -> Result<(), ErrorKind> {
+    debug!("Config: {:?}", multi_config);
+    debug!("Environment: {:?}", env);
+
     let config_path = config_filename.as_ref().parent();
 
     for repo in &multi_config.repositories {
-        export_repository(&config_path, repo, env, verify)?;
+        export_repository(&config_path, repo, env, verify, git_active_branches)?;
     }
 
     let path_git = construct_path(&config_path, &multi_config.path_git);
@@ -93,6 +97,7 @@ fn export_repository(
     repo: &config::PathRepositoryConfig,
     env: &config::Environment,
     verify: bool,
+    git_active_branches: Option<usize>,
 ) -> Result<(), ErrorKind> {
     let path_hg = construct_path(&config_path, &repo.path_hg);
 
@@ -124,7 +129,7 @@ fn export_repository(
 
     let mut counter: usize = 0;
     {
-        let (output, saved_state) = git_repo.start_import()?;
+        let (output, saved_state) = git_repo.start_import(git_active_branches)?;
 
         let from = if let Some(saved_state) = saved_state.as_ref() {
             match saved_state {

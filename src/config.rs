@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RepositoryConfig {
     pub offset: Option<usize>,
     pub authors: Option<HashMap<String, String>>,
@@ -36,7 +36,7 @@ impl Default for RepositoryConfig {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct PathRepositoryConfig {
     pub alias: Option<String>,
     pub path_hg: PathBuf,
@@ -46,7 +46,7 @@ pub struct PathRepositoryConfig {
     pub merged_branches: Option<HashMap<String, String>>,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct MultiConfig {
     pub path_git: PathBuf,
     pub repositories: Vec<PathRepositoryConfig>,

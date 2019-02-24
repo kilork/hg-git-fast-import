@@ -27,6 +27,9 @@ pub enum Cli {
         /// Limit high revision to import.
         #[structopt(name = "limit-high", long)]
         limit_high: Option<usize>,
+        /// Git maximum number of branches to maintain active at once.
+        #[structopt(name = "git-active-branches", long)]
+        git_active_branches: Option<usize>,
     },
     /// Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
     #[structopt(name = "multi")]
@@ -43,6 +46,9 @@ pub enum Cli {
         /// Compares resulting Git repositories with Mercurial (only final state with subfolders).
         #[structopt(long)]
         verify: bool,
+        /// Git maximum number of branches to maintain active at once.
+        #[structopt(name = "git-active-branches", long)]
+        git_active_branches: Option<usize>,
     },
     /// Generates completion scripts for your shell
     #[structopt(

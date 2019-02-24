@@ -60,6 +60,7 @@ impl From<std::io::Error> for TargetRepositoryError {
 pub trait TargetRepository {
     fn start_import(
         &mut self,
+        git_active_branches: Option<usize>,
     ) -> Result<(&mut Write, Option<config::RepositorySavedState>), TargetRepositoryError>;
 
     fn finish(&mut self) -> Result<(), TargetRepositoryError>;
