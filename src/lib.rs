@@ -6,6 +6,8 @@ use log::{info, trace};
 
 use regex::Regex;
 
+use ordered_parallel_iterator::OrderedParallelIterator;
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{
@@ -26,8 +28,8 @@ use self::config::RepositorySavedState;
 pub use error::ErrorKind;
 
 use hg_parser::{
-    file_content, Changeset, ChangesetIter, FileType, ManifestEntryDetails, MercurialRepository,
-    Revision,
+    file_content, Changeset, FileType, ManifestEntryDetails, MercurialRepository, Revision,
+    SharedMercurialRepository,
 };
 
 pub fn read_file(filename: &PathBuf) -> io::Result<String> {
@@ -101,7 +103,7 @@ pub trait TargetRepository {
 
 struct MercurialRepo<'a> {
     path: PathBuf,
-    inner: MercurialRepository,
+    inner: SharedMercurialRepository,
     config: &'a config::RepositoryConfig,
     env: &'a config::Environment,
 }
@@ -114,7 +116,7 @@ impl<'a> MercurialRepo<'a> {
     ) -> Result<MercurialRepo<'a>, ErrorKind> {
         Ok(Self {
             path: path.as_ref().clone().to_path_buf(),
-            inner: MercurialRepository::open(path)?,
+            inner: SharedMercurialRepository::new(MercurialRepository::open(path)?),
             config,
             env,
         })
@@ -166,8 +168,8 @@ impl<'a> MercurialRepo<'a> {
         revision.into() + 1 + self.config.offset.unwrap_or(0)
     }
 
-    fn range(&self, range: Range<usize>) -> ChangesetIter {
-        self.inner.range_iter(range)
+    fn range(&self, range: Range<usize>) -> OrderedParallelIterator<Changeset> {
+        self.inner.par_range_iter(range.into())
     }
 
     fn export_commit(

@@ -16,6 +16,7 @@ mod cli;
 use self::cli::Cli::{self, *};
 
 fn main() {
+    let start_time = Instant::now();
     Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let cli = Cli::from_args();
@@ -68,6 +69,7 @@ fn main() {
                 )
                 .unwrap();
             }
+            info!("Finished. Time elapsed: {:?}", start_time.elapsed());
         }
         Multi {
             config,
@@ -75,7 +77,6 @@ fn main() {
             no_clean_closed_branches,
             verify,
         } => {
-            let start_time = Instant::now();
             let env = load_environment(&authors, no_clean_closed_branches);
             info!("Loading config");
             let config_str = read_file(&config).unwrap();
