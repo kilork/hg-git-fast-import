@@ -1,8 +1,10 @@
+use std::fs::File;
 use std::io;
 use std::path::PathBuf;
 use std::time::Instant;
 
-use log::{info, trace};
+use log::info;
+use simplelog::{Config, LevelFilter, WriteLogger};
 
 use structopt::StructOpt;
 
@@ -10,17 +12,14 @@ use hg_git_fast_import::config::{Environment, RepositoryConfig};
 use hg_git_fast_import::git::{GitTargetRepository, StdoutTargetRepository};
 use hg_git_fast_import::{multi::multi2git, read_file, single::hg2git};
 
-use env_logger::{Builder, Env};
 mod cli;
 
 use self::cli::Cli::{self, *};
 
 fn main() {
     let start_time = Instant::now();
-    Builder::from_env(Env::default().default_filter_or("info")).init();
 
     let cli = Cli::from_args();
-    trace!("cli: {:?}", cli);
     match cli {
         Completions { shell } => {
             cli::Cli::clap().gen_completions_to(env!("CARGO_PKG_NAME"), shell, &mut io::stdout());
@@ -34,7 +33,10 @@ fn main() {
             verify,
             limit_high,
             git_active_branches,
+            log,
         } => {
+            log.as_ref().map(setup_logger);
+
             let env = load_environment(&authors, no_clean_closed_branches);
 
             let repository_config = config.map_or_else(RepositoryConfig::default, |x| {
@@ -80,8 +82,12 @@ fn main() {
             no_clean_closed_branches,
             verify,
             git_active_branches,
+            log,
         } => {
+            log.as_ref().map(setup_logger);
+
             let env = load_environment(&authors, no_clean_closed_branches);
+
             info!("Loading config");
             let config_str = read_file(&config).unwrap();
             let multi_config = toml::from_str(&config_str).unwrap();
@@ -90,6 +96,15 @@ fn main() {
             info!("Finished. Time elapsed: {:?}", start_time.elapsed());
         }
     }
+}
+
+fn setup_logger(log: &PathBuf) {
+    WriteLogger::init(
+        LevelFilter::Info,
+        Config::default(),
+        File::create(log).unwrap(),
+    )
+    .unwrap();
 }
 
 fn load_environment(authors: &Option<PathBuf>, no_clean_closed_branches: bool) -> Environment {

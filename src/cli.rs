@@ -30,6 +30,9 @@ pub enum Cli {
         /// Git maximum number of branches to maintain active at once.
         #[structopt(name = "git-active-branches", long)]
         git_active_branches: Option<usize>,
+        /// Log file. If present - additional log info would be printed to this file.
+        #[structopt(parse(from_os_str), long)]
+        log: Option<PathBuf>,
     },
     /// Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
     #[structopt(name = "multi")]
@@ -49,6 +52,9 @@ pub enum Cli {
         /// Git maximum number of branches to maintain active at once.
         #[structopt(name = "git-active-branches", long)]
         git_active_branches: Option<usize>,
+        /// Log file. If present - additional log info would be printed to this file.
+        #[structopt(parse(from_os_str), long)]
+        log: Option<PathBuf>,
     },
     /// Generates completion scripts for your shell
     #[structopt(
