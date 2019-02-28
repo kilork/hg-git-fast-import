@@ -116,7 +116,7 @@ impl<'a> MercurialRepo<'a> {
         env: &'a config::Environment,
     ) -> Result<MercurialRepo<'a>, ErrorKind> {
         Ok(Self {
-            path: path.as_ref().clone().to_path_buf(),
+            path: path.as_ref().to_path_buf(),
             inner: SharedMercurialRepository::new(MercurialRepository::open(path)?),
             config,
             env,
@@ -154,11 +154,10 @@ impl<'a> MercurialRepo<'a> {
 
         let (name, email) = if let Some(caps) = RE.captures(&user) {
             (
-                caps.get(1).unwrap().as_str().trim_right(),
+                caps.get(1).unwrap().as_str().trim_end(),
                 caps.get(2).unwrap().as_str(),
             )
         } else {
-            // (&user[..], "<unknown@localhost>")
             panic!("Wrong user: {}", user);
         };
 
@@ -248,11 +247,11 @@ impl<'a> MercurialRepo<'a> {
             header.time
         );
         let prefix = strip_leading_slash(self.config.path_prefix.as_ref(), &"".into());
-        for ref mut file in &mut changeset.files {
+        for file in &mut changeset.files {
             match (&mut file.data, &mut file.manifest_entry) {
                 (None, None) => {
                     write!(output, "D {}", prefix)?;
-                    output.write_all(&mut file.path)?;
+                    output.write_all(&file.path)?;
                     writeln!(output)?;
                 }
                 (Some(data), Some(manifest_entry)) => {
@@ -267,7 +266,7 @@ impl<'a> MercurialRepo<'a> {
                         },
                         prefix
                     )?;
-                    output.write_all(&mut file.path)?;
+                    output.write_all(&file.path)?;
                     let data = file_content(&data);
                     writeln!(output, "\ndata {}", data.len())?;
                     output.write_all(&data[..])?;

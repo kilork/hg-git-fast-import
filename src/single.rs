@@ -35,9 +35,8 @@ pub fn hg2git<P: AsRef<Path>>(
     debug!("Checking saved state...");
     let mut brmap = repository_config
         .branches
-        .as_ref()
-        .map(|x| x.clone())
-        .unwrap_or_else(|| HashMap::new());
+        .clone()
+        .unwrap_or_else(HashMap::new);
     let mut counter: usize = 0;
 
     {

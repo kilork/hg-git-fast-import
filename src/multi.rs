@@ -81,7 +81,7 @@ pub fn multi2git<P: AsRef<Path>>(
 
         if new_rerository {
             for branch_from in branches_from {
-                git_repo.merge_unrelated(&vec![branch_from.as_ref()])?;
+                git_repo.merge_unrelated(&[branch_from.as_ref()])?;
             }
         } else {
             let branches_from_str: Vec<_> = branches_from.iter().map(|x| x.as_ref()).collect();
@@ -139,12 +139,7 @@ fn export_repository(
             0
         };
 
-        let mut brmap = repo
-            .config
-            .branches
-            .as_ref()
-            .map(|x| x.clone())
-            .unwrap_or_else(|| HashMap::new());
+        let mut brmap = repo.config.branches.clone().unwrap_or_else(HashMap::new);
 
         info!(
             "Exporting commits from repo: {:?} from {} to {} offset {:?}",
