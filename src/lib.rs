@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use std::process::ExitStatus;
 
 pub mod config;
+pub mod env;
 pub mod error;
 pub mod git;
 pub mod multi;
@@ -106,14 +107,14 @@ struct MercurialRepo<'a> {
     path: PathBuf,
     inner: SharedMercurialRepository,
     config: &'a config::RepositoryConfig,
-    env: &'a config::Environment,
+    env: &'a env::Environment,
 }
 
 impl<'a> MercurialRepo<'a> {
     pub fn open<P: AsRef<Path>>(
         path: P,
         config: &'a config::RepositoryConfig,
-        env: &'a config::Environment,
+        env: &'a env::Environment,
     ) -> Result<MercurialRepo<'a>, ErrorKind> {
         Ok(Self {
             path: path.as_ref().to_path_buf(),
@@ -240,11 +241,8 @@ impl<'a> MercurialRepo<'a> {
         }
 
         info!(
-            "{: <15} {: <32} {: <64} {}",
-            format!("{}({})", mark, revision.0),
-            branch,
-            user,
-            header.time
+            "{}({}) {} {} {}",
+            mark, revision.0, branch, user, header.time
         );
         let prefix = strip_leading_slash(self.config.path_prefix.as_ref(), &"".into());
         for file in &mut changeset.files {

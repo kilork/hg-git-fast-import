@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use log::{debug, info};
 
-use super::{config, MercurialRepo, RepositorySavedState, TargetRepository};
+use super::{config, env, MercurialRepo, RepositorySavedState, TargetRepository};
 use crate::error::ErrorKind;
 use crate::git::GitTargetRepository;
 
@@ -23,7 +23,7 @@ fn construct_path<P: AsRef<Path>>(config_path: &Option<P>, target: P) -> PathBuf
 pub fn multi2git<P: AsRef<Path>>(
     verify: bool,
     git_active_branches: Option<usize>,
-    env: &config::Environment,
+    env: &env::Environment,
     config_filename: P,
     multi_config: &config::MultiConfig,
 ) -> Result<(), ErrorKind> {
@@ -95,7 +95,7 @@ pub fn multi2git<P: AsRef<Path>>(
 fn export_repository(
     config_path: &Option<&Path>,
     repo: &config::PathRepositoryConfig,
-    env: &config::Environment,
+    env: &env::Environment,
     verify: bool,
     git_active_branches: Option<usize>,
 ) -> Result<(), ErrorKind> {

@@ -5,14 +5,14 @@ use std::path::Path;
 
 use crate::error::ErrorKind;
 
-use super::{config, MercurialRepo, RepositorySavedState, TargetRepository};
+use super::{config, env, MercurialRepo, RepositorySavedState, TargetRepository};
 
 pub fn hg2git<P: AsRef<Path>>(
     repourl: P,
     verify: bool,
     git_active_branches: Option<usize>,
     target: &mut TargetRepository,
-    env: &config::Environment,
+    env: &env::Environment,
     repository_config: &config::RepositoryConfig,
 ) -> Result<(), ErrorKind> {
     debug!("Config: {:?}", repository_config);

@@ -53,12 +53,6 @@ pub struct MultiConfig {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct Environment {
-    pub no_clean_closed_branches: bool,
-    pub authors: Option<HashMap<String, String>>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type", content = "value")]
 pub enum RepositorySavedState {
     OffsetedRevision(usize),
