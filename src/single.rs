@@ -75,15 +75,19 @@ pub fn hg2git<P: AsRef<Path>>(
                     }
                 }
             }
-            bar.finish_with_message(&format!(
-                "Repository {} [{};{}). Elapsed: {}",
-                repourl.as_ref().to_str().unwrap(),
-                from,
-                to,
-                HumanDuration(start.elapsed())
-            ));
 
-            counter = repo.export_tags(from_tag..to, counter, output)?;
+            if errors.is_none() {
+                bar.finish_with_message(&format!(
+                    "Repository {} [{};{}). Elapsed: {}",
+                    repourl.as_ref().to_str().unwrap(),
+                    from,
+                    to,
+                    HumanDuration(start.elapsed())
+                ));
+
+                counter = repo.export_tags(from_tag..to, counter, output)?;
+            }
+
             from_tag
         };
 
