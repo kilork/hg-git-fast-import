@@ -24,6 +24,7 @@ impl<'a> TargetRepository for StdoutTargetRepository<'a> {
     fn start_import(
         &mut self,
         _git_active_branches: Option<usize>,
+        _clean: bool,
     ) -> Result<(&mut Write, Option<RepositorySavedState>), TargetRepositoryError> {
         Ok((&mut self.stdoutlock, None))
     }
@@ -85,10 +86,17 @@ impl TargetRepository for GitTargetRepository {
     fn start_import(
         &mut self,
         git_active_branches: Option<usize>,
+        clean: bool,
     ) -> Result<(&mut Write, Option<RepositorySavedState>), TargetRepositoryError> {
         let path = &self.path;
         let saved_state;
         info!("Checking Git repo: {}", path.to_str().unwrap());
+
+        if path.exists() && clean {
+            info!("Path exists, removing because of clean option");
+            std::fs::remove_dir_all(path)?;
+        }
+
         if path.exists() {
             if path.is_dir() {
                 info!("Path exists, checking for saved state");

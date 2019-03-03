@@ -129,51 +129,78 @@ fn export_repository(
 
     let mut git_repo = GitTargetRepository::open(path_git);
 
+    let mut errors = None;
     let mut counter: usize = 0;
-    {
-        let (output, saved_state) = git_repo.start_import(git_active_branches)?;
+    let from_tag =
+        {
+            let (output, saved_state) = git_repo.start_import(git_active_branches, env.clean)?;
 
-        let from = if let Some(saved_state) = saved_state.as_ref() {
-            match saved_state {
-                RepositorySavedState::OffsetedRevision(rev) => rev - offset,
+            let (from, from_tag) = if let Some(saved_state) = saved_state.as_ref() {
+                match saved_state {
+                    RepositorySavedState::OffsetedRevision(rev, from_tag) => {
+                        (rev - offset, from_tag - offset)
+                    }
+                }
+            } else {
+                (0, 0)
+            };
+
+            let mut brmap = repo.config.branches.clone().unwrap_or_else(HashMap::new);
+
+            info!(
+                "Exporting commits from repo: {:?} from {} to {} offset {:?}",
+                repo.path_hg, from, to, repo.config.offset
+            );
+
+            let start = Instant::now();
+            let bar = ProgressBar::new((to - from) as u64);
+            bar.set_style(ProgressStyle::default_bar().template(
+                "{spinner:.green}[{elapsed_precise}] [{wide_bar:.cyan/blue}] {msg} ({eta})",
+            ));
+            for mut changeset in mercurial_repo.range(from..to) {
+                bar.inc(1);
+                bar.set_message(&format!("{:6}/{}", changeset.revision.0, to));
+                match mercurial_repo.export_commit(&mut changeset, counter, &mut brmap, output) {
+                    Ok(progress) => counter = progress,
+                    x => {
+                        errors = Some((x, changeset.revision.0));
+                        break;
+                    }
+                }
             }
-        } else {
-            0
+
+            if errors.is_none() {
+                bar.finish_with_message(&format!(
+                    "Repository {} [{};{}). Elapsed: {}",
+                    repo.path_git.to_str().unwrap(),
+                    from,
+                    to,
+                    HumanDuration(start.elapsed())
+                ));
+
+                counter = mercurial_repo.export_tags(from_tag..to, counter, output)?;
+            }
+            from_tag
         };
 
-        let mut brmap = repo.config.branches.clone().unwrap_or_else(HashMap::new);
-
-        info!(
-            "Exporting commits from repo: {:?} from {} to {} offset {:?}",
-            repo.path_hg, from, to, repo.config.offset
-        );
-
-        let start = Instant::now();
-        let bar = ProgressBar::new((to - from) as u64);
-        bar.set_style(
-            ProgressStyle::default_bar().template(
-                "{spinner:.green}[{elapsed_precise}] [{wide_bar:.cyan/blue}] {msg} ({eta})",
-            ),
-        );
-        for mut changeset in mercurial_repo.range(from..to) {
-            bar.inc(1);
-            bar.set_message(&format!("{:6}/{}", changeset.revision.0, to));
-            counter = mercurial_repo.export_commit(&mut changeset, counter, &mut brmap, output)?;
+    if let Some((error, at)) = errors {
+        if at > 0 {
+            info!("Saving last success state...");
+            git_repo.save_state(RepositorySavedState::OffsetedRevision(
+                at as usize - 1 + offset,
+                from_tag + offset,
+            ))?;
         }
-        bar.finish_with_message(&format!(
-            "Repository {} [{};{}). Elapsed: {}",
-            repo.path_git.to_str().unwrap(),
-            from,
-            to,
-            HumanDuration(start.elapsed())
-        ));
-
-        counter = mercurial_repo.export_tags(from..to, counter, output)?;
+        error?;
     }
+
     info!("Issued {} commands", counter);
 
     info!("Saving state...");
-    git_repo.save_state(RepositorySavedState::OffsetedRevision(to + offset))?;
+    git_repo.save_state(RepositorySavedState::OffsetedRevision(
+        to + offset,
+        to + offset,
+    ))?;
 
     git_repo.finish()?;
 

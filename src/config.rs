@@ -55,7 +55,7 @@ pub struct MultiConfig {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type", content = "value")]
 pub enum RepositorySavedState {
-    OffsetedRevision(usize),
+    OffsetedRevision(usize, usize),
 }
 
 #[cfg(test)]
@@ -64,8 +64,9 @@ mod tests {
 
     #[test]
     fn repository_saved_state_to_toml() {
-        let expected = "type = \"OffsetedRevision\"\nvalue = 100\n";
-        let result = toml::to_string(&super::RepositorySavedState::OffsetedRevision(100)).unwrap();
+        let expected = "type = \"OffsetedRevision\"\nvalue = [100, 200]\n";
+        let result =
+            toml::to_string(&super::RepositorySavedState::OffsetedRevision(100, 200)).unwrap();
         assert_eq!(expected, result);
     }
 

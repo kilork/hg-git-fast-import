@@ -36,10 +36,11 @@ fn main() {
             limit_high,
             git_active_branches,
             log,
+            clean,
         } => {
             log.as_ref().map(setup_logger);
 
-            let env = load_environment(&authors, no_clean_closed_branches);
+            let env = load_environment(&authors, no_clean_closed_branches, clean);
 
             let repository_config = config.map_or_else(RepositoryConfig::default, |x| {
                 info!("Loading config");
@@ -89,10 +90,11 @@ fn main() {
             verify,
             git_active_branches,
             log,
+            clean,
         } => {
             log.as_ref().map(setup_logger);
 
-            let env = load_environment(&authors, no_clean_closed_branches);
+            let env = load_environment(&authors, no_clean_closed_branches, clean);
 
             info!("Loading config");
             let config_str = read_file(&config).unwrap();
@@ -117,7 +119,11 @@ fn setup_logger(log: &PathBuf) {
     .unwrap();
 }
 
-fn load_environment(authors: &Option<PathBuf>, no_clean_closed_branches: bool) -> Environment {
+fn load_environment(
+    authors: &Option<PathBuf>,
+    no_clean_closed_branches: bool,
+    clean: bool,
+) -> Environment {
     Environment {
         no_clean_closed_branches,
         authors: authors.as_ref().map(|x| {
@@ -127,5 +133,6 @@ fn load_environment(authors: &Option<PathBuf>, no_clean_closed_branches: bool) -
             info!("Authors list loaded");
             authors
         }),
+        clean,
     }
 }

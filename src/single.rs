@@ -40,48 +40,69 @@ pub fn hg2git<P: AsRef<Path>>(
         .clone()
         .unwrap_or_else(HashMap::new);
     let mut counter: usize = 0;
+    let offset = repository_config.offset.unwrap_or(0);
 
-    {
-        let (output, saved_state) = target.start_import(git_active_branches)?;
+    let mut errors = None;
+    let from_tag =
+        {
+            let (output, saved_state) = target.start_import(git_active_branches, env.clean)?;
 
-        let from = if let Some(saved_state) = saved_state.as_ref() {
-            match saved_state {
-                RepositorySavedState::OffsetedRevision(rev) => {
-                    rev - repo.config.offset.unwrap_or(0)
+            let (from, from_tag) = if let Some(saved_state) = saved_state.as_ref() {
+                match saved_state {
+                    RepositorySavedState::OffsetedRevision(rev, from_tag) => {
+                        (rev - offset, from_tag - offset)
+                    }
+                }
+            } else {
+                (0, 0)
+            };
+
+            info!("Exporting commits from {}", from);
+
+            let start = Instant::now();
+            let bar = ProgressBar::new((to - from) as u64);
+            bar.set_style(ProgressStyle::default_bar().template(
+                "{spinner:.green}[{elapsed_precise}] [{wide_bar:.cyan/blue}] {msg} ({eta})",
+            ));
+            for mut changeset in repo.range(from..to) {
+                bar.inc(1);
+                bar.set_message(&format!("{:6}/{}", changeset.revision.0, to));
+                match repo.export_commit(&mut changeset, counter, &mut brmap, output) {
+                    Ok(progress) => counter = progress,
+                    x => {
+                        errors = Some((x, changeset.revision.0));
+                        break;
+                    }
                 }
             }
-        } else {
-            0
+            bar.finish_with_message(&format!(
+                "Repository {} [{};{}). Elapsed: {}",
+                repourl.as_ref().to_str().unwrap(),
+                from,
+                to,
+                HumanDuration(start.elapsed())
+            ));
+
+            counter = repo.export_tags(from_tag..to, counter, output)?;
+            from_tag
         };
 
-        info!("Exporting commits from {}", from);
-
-        let start = Instant::now();
-        let bar = ProgressBar::new((to - from) as u64);
-        bar.set_style(
-            ProgressStyle::default_bar().template(
-                "{spinner:.green}[{elapsed_precise}] [{wide_bar:.cyan/blue}] {msg} ({eta})",
-            ),
-        );
-        for mut changeset in repo.range(from..to) {
-            bar.inc(1);
-            bar.set_message(&format!("{:6}/{}", changeset.revision.0, to));
-            counter = repo.export_commit(&mut changeset, counter, &mut brmap, output)?;
+    if let Some((error, at)) = errors {
+        if at > 0 {
+            info!("Saving last success state...");
+            target.save_state(RepositorySavedState::OffsetedRevision(
+                at as usize - 1 + offset,
+                from_tag + offset,
+            ))?;
         }
-        bar.finish_with_message(&format!(
-            "Repository {} [{};{}). Elapsed: {}",
-            repourl.as_ref().to_str().unwrap(),
-            from,
-            to,
-            HumanDuration(start.elapsed())
-        ));
-
-        counter = repo.export_tags(from..to, counter, output)?;
+        error?;
     }
+
     info!("Issued {} commands", counter);
     info!("Saving state...");
     target.save_state(RepositorySavedState::OffsetedRevision(
-        to + repository_config.offset.unwrap_or(0),
+        to + offset,
+        to + offset,
     ))?;
 
     target.finish()?;

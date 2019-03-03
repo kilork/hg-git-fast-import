@@ -62,6 +62,7 @@ pub trait TargetRepository {
     fn start_import(
         &mut self,
         git_active_branches: Option<usize>,
+        clean: bool,
     ) -> Result<(&mut Write, Option<config::RepositorySavedState>), TargetRepositoryError>;
 
     fn finish(&mut self) -> Result<(), TargetRepositoryError>;

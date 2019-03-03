@@ -33,6 +33,9 @@ pub enum Cli {
         /// Log file. If present - additional log info would be printed to this file.
         #[structopt(parse(from_os_str), long)]
         log: Option<PathBuf>,
+        /// Recreate Git repo before import if it exists.
+        #[structopt(long)]
+        clean: bool,
     },
     /// Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
     #[structopt(name = "multi")]
@@ -55,6 +58,9 @@ pub enum Cli {
         /// Log file. If present - additional log info would be printed to this file.
         #[structopt(parse(from_os_str), long)]
         log: Option<PathBuf>,
+        /// Recreate Git repo before import if it exists.
+        #[structopt(long)]
+        clean: bool,
     },
     /// Generates completion scripts for your shell
     #[structopt(
