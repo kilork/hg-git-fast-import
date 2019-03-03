@@ -3,12 +3,14 @@ use std::io;
 use std::path::PathBuf;
 use std::time::Instant;
 
+use indicatif::HumanDuration;
 use log::info;
 use simplelog::{Config, LevelFilter, WriteLogger};
 
 use structopt::StructOpt;
 
-use hg_git_fast_import::config::{Environment, RepositoryConfig};
+use hg_git_fast_import::config::RepositoryConfig;
+use hg_git_fast_import::env::Environment;
 use hg_git_fast_import::git::{GitTargetRepository, StdoutTargetRepository};
 use hg_git_fast_import::{multi::multi2git, read_file, single::hg2git};
 
@@ -74,7 +76,11 @@ fn main() {
                 )
                 .unwrap();
             }
-            info!("Finished. Time elapsed: {:?}", start_time.elapsed());
+            info!("Import done");
+            eprintln!(
+                "Finished. Time elapsed: {}",
+                HumanDuration(start_time.elapsed())
+            );
         }
         Multi {
             config,
@@ -93,7 +99,11 @@ fn main() {
             let multi_config = toml::from_str(&config_str).unwrap();
             info!("Config loaded");
             multi2git(verify, git_active_branches, &env, &config, &multi_config).unwrap();
-            info!("Finished. Time elapsed: {:?}", start_time.elapsed());
+            info!("Import done");
+            eprintln!(
+                "Finished. Time elapsed: {}",
+                HumanDuration(start_time.elapsed())
+            );
         }
     }
 }

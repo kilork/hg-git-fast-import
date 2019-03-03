@@ -1,7 +1,9 @@
-use std::collections::HashMap;
-
+use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use log::{debug, info};
+
+use std::collections::HashMap;
 use std::path::Path;
+use std::time::Instant;
 
 use crate::error::ErrorKind;
 
@@ -54,9 +56,25 @@ pub fn hg2git<P: AsRef<Path>>(
 
         info!("Exporting commits from {}", from);
 
+        let start = Instant::now();
+        let bar = ProgressBar::new((to - from) as u64);
+        bar.set_style(
+            ProgressStyle::default_bar().template(
+                "{spinner:.green}[{elapsed_precise}] [{wide_bar:.cyan/blue}] {msg} ({eta})",
+            ),
+        );
         for mut changeset in repo.range(from..to) {
+            bar.inc(1);
+            bar.set_message(&format!("{:6}/{}", changeset.revision.0, to));
             counter = repo.export_commit(&mut changeset, counter, &mut brmap, output)?;
         }
+        bar.finish_with_message(&format!(
+            "Repository {} [{};{}). Elapsed: {}",
+            repourl.as_ref().to_str().unwrap(),
+            from,
+            to,
+            HumanDuration(start.elapsed())
+        ));
 
         counter = repo.export_tags(from..to, counter, output)?;
     }

@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::path::PathBuf;
+use std::time::Instant;
 
+use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use log::{debug, info};
 
 use super::{config, env, MercurialRepo, RepositorySavedState, TargetRepository};
@@ -146,9 +148,25 @@ fn export_repository(
             repo.path_hg, from, to, repo.config.offset
         );
 
+        let start = Instant::now();
+        let bar = ProgressBar::new((to - from) as u64);
+        bar.set_style(
+            ProgressStyle::default_bar().template(
+                "{spinner:.green}[{elapsed_precise}] [{wide_bar:.cyan/blue}] {msg} ({eta})",
+            ),
+        );
         for mut changeset in mercurial_repo.range(from..to) {
+            bar.inc(1);
+            bar.set_message(&format!("{:6}/{}", changeset.revision.0, to));
             counter = mercurial_repo.export_commit(&mut changeset, counter, &mut brmap, output)?;
         }
+        bar.finish_with_message(&format!(
+            "Repository {} [{};{}). Elapsed: {}",
+            repo.path_git.to_str().unwrap(),
+            from,
+            to,
+            HumanDuration(start.elapsed())
+        ));
 
         counter = mercurial_repo.export_tags(from..to, counter, output)?;
     }
