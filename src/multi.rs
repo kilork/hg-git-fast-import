@@ -185,9 +185,11 @@ fn export_repository(
 
     if let Some((error, at)) = errors {
         if at > 0 {
-            info!("Saving last success state...");
+            let at = at as usize;
+            eprintln!("Import failed at {}", at);
+            info!("Saving last success state at {}...", at);
             git_repo.save_state(RepositorySavedState::OffsetedRevision(
-                at as usize - 1 + offset,
+                at + offset,
                 from_tag + offset,
             ))?;
         }
