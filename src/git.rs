@@ -127,6 +127,7 @@ impl TargetRepository for GitTargetRepository {
             "fast-import",
             "--export-marks=.git/hg-git-fast-import.marks",
             "--import-marks-if-exists=.git/hg-git-fast-import.marks",
+            "--quiet",
         ]);
         if let Some(git_active_branches) = git_active_branches {
             git_cmd = git_cmd.arg(format!("--active-branches={}", git_active_branches));
