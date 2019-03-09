@@ -21,9 +21,7 @@ lazy_static = "1"
 toml = "0.4"
 structopt = "0.2"
 hg-parser = { git = "https://github.com/kilork/hg-parser" }
-# hg-parser = { path = "../hg-parser" }
-ordered-parallel-iterator = { git = "https://github.com/kilork/ordered-parallel-iterator" }
-# ordered-parallel-iterator = { path =  "../ordered-parallel-iterator" }
+ordered-parallel-iterator = "0.1"
 indicatif = "0.11"
 
 [dependencies.serde]
