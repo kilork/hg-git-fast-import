@@ -20,7 +20,7 @@ regex = "1"
 lazy_static = "1"
 toml = "0.4"
 structopt = "0.2"
-hg-parser = { git = "https://github.com/kilork/hg-parser" }
+hg-parser = "0.1"
 ordered-parallel-iterator = "0.1"
 indicatif = "0.11"
 
