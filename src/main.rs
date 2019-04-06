@@ -38,10 +38,12 @@ fn main() {
             log,
             clean,
             cron,
+            target_push,
         } => {
             log.as_ref().map(setup_logger);
 
-            let env = load_environment(&authors, no_clean_closed_branches, clean, cron);
+            let env =
+                load_environment(&authors, no_clean_closed_branches, clean, cron, target_push);
 
             let repository_config = config.map_or_else(RepositoryConfig::default, |x| {
                 info!("Loading config");
@@ -98,10 +100,12 @@ fn main() {
             log,
             clean,
             cron,
+            target_push,
         } => {
             log.as_ref().map(setup_logger);
 
-            let env = load_environment(&authors, no_clean_closed_branches, clean, cron);
+            let env =
+                load_environment(&authors, no_clean_closed_branches, clean, cron, target_push);
 
             info!("Loading config");
             let config_str = read_file(&config).unwrap();
@@ -133,6 +137,7 @@ fn load_environment(
     no_clean_closed_branches: bool,
     clean: bool,
     cron: bool,
+    target_push: bool,
 ) -> Environment {
     Environment {
         no_clean_closed_branches,
@@ -145,5 +150,6 @@ fn load_environment(
         }),
         clean,
         cron,
+        target_push,
     }
 }

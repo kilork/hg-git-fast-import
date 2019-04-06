@@ -8,4 +8,5 @@ pub struct Environment {
     pub authors: Option<HashMap<String, String>>,
     pub clean: bool,
     pub cron: bool,
+    pub target_push: bool,
 }

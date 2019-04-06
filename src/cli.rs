@@ -39,6 +39,9 @@ pub enum Cli {
         /// Produce minimal output only if new revisions loaded or error happened.
         #[structopt(long)]
         cron: bool,
+        /// Push target Git repository after successful import.
+        #[structopt(name = "target-push", long)]
+        target_push: bool,
     },
     /// Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
     #[structopt(name = "multi")]
@@ -67,6 +70,9 @@ pub enum Cli {
         /// Produce minimal output only if new revisions loaded or error happened.
         #[structopt(long)]
         cron: bool,
+        /// Push target Git repository after successful import.
+        #[structopt(name = "target-push", long)]
+        target_push: bool,
     },
     /// Generates completion scripts for your shell
     #[structopt(

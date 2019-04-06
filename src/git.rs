@@ -196,7 +196,7 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
             info!("Resetting Git repo.");
             self.git(&["reset", "--hard"], cron)
         } else {
-            panic!("Cannot reset Git repo.")
+            panic!("Cannot checkout HEAD revision in Git repo.")
         };
 
         let status = if status.success() {
@@ -206,8 +206,22 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
             panic!("Cannot reset Git repo.")
         };
         if !status.success() {
-            panic!("Cannot checkout HEAD revision.");
+            panic!("Cannot cleanup Git repo.");
         };
+
+        let target_push = self.env.map(|x| x.target_push).unwrap_or_default();
+        if target_push {
+            info!("Pushing Git repo.");
+            let status = self.git(&["push", "--all"], cron);
+            let status = if status.success() {
+                self.git(&["push", "--tags"], cron)
+            } else {
+                panic!("Cannot push all to Git repo.");
+            };
+            if !status.success() {
+                panic!("Cannot push all tags to Git repo.");
+            };
+        }
 
         Ok(())
     }
