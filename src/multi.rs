@@ -129,47 +129,56 @@ fn export_repository(
 
     let mut git_repo = GitTargetRepository::open(path_git);
 
+    git_repo.set_env(&env);
+
     let mut errors = None;
     let mut counter: usize = 0;
-    let from_tag =
-        {
-            let (output, saved_state) = git_repo.start_import(git_active_branches, env.clean)?;
+    let from_tag = {
+        let (output, saved_state) = git_repo.start_import(git_active_branches)?;
 
-            let (from, from_tag) = if let Some(saved_state) = saved_state.as_ref() {
-                match saved_state {
-                    RepositorySavedState::OffsetedRevision(rev, from_tag) => {
-                        (rev - offset, from_tag - offset)
-                    }
+        let (from, from_tag) = if let Some(saved_state) = saved_state.as_ref() {
+            match saved_state {
+                RepositorySavedState::OffsetedRevision(rev, from_tag) => {
+                    (rev - offset, from_tag - offset)
                 }
-            } else {
-                (0, 0)
-            };
+            }
+        } else {
+            (0, 0)
+        };
 
-            let mut brmap = repo.config.branches.clone().unwrap_or_else(HashMap::new);
+        let mut brmap = repo.config.branches.clone().unwrap_or_else(HashMap::new);
 
-            info!(
-                "Exporting commits from repo: {:?} from {} to {} offset {:?}",
-                repo.path_hg, from, to, repo.config.offset
-            );
+        info!(
+            "Exporting commits from repo: {:?} from {} to {} offset {:?}",
+            repo.path_hg, from, to, repo.config.offset
+        );
 
-            let start = Instant::now();
-            let bar = ProgressBar::new((to - from) as u64);
+        let show_progress_bar = !env.cron;
+
+        let start = Instant::now();
+        let bar = ProgressBar::new((to - from) as u64);
+        if show_progress_bar {
             bar.set_style(ProgressStyle::default_bar().template(
                 "{spinner:.green}[{elapsed_precise}] [{wide_bar:.cyan/blue}] {msg} ({eta})",
             ));
-            for mut changeset in mercurial_repo.range(from..to) {
+        }
+        for mut changeset in mercurial_repo.range(from..to) {
+            if show_progress_bar {
                 bar.inc(1);
                 bar.set_message(&format!("{:6}/{}", changeset.revision.0, to));
-                match mercurial_repo.export_commit(&mut changeset, counter, &mut brmap, output) {
-                    Ok(progress) => counter = progress,
-                    x => {
-                        errors = Some((x, changeset.revision.0));
-                        break;
-                    }
-                }
             }
 
-            if errors.is_none() {
+            match mercurial_repo.export_commit(&mut changeset, counter, &mut brmap, output) {
+                Ok(progress) => counter = progress,
+                x => {
+                    errors = Some((x, changeset.revision.0));
+                    break;
+                }
+            }
+        }
+
+        if errors.is_none() {
+            if show_progress_bar {
                 bar.finish_with_message(&format!(
                     "Repository {} [{};{}). Elapsed: {}",
                     repo.path_git.to_str().unwrap(),
@@ -177,11 +186,12 @@ fn export_repository(
                     to,
                     HumanDuration(start.elapsed())
                 ));
-
-                counter = mercurial_repo.export_tags(from_tag..to, counter, output)?;
             }
-            from_tag
-        };
+
+            counter = mercurial_repo.export_tags(from_tag..to, counter, output)?;
+        }
+        from_tag
+    };
 
     if let Some((error, at)) = errors {
         if at > 0 {

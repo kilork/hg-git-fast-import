@@ -43,40 +43,47 @@ pub fn hg2git<P: AsRef<Path>>(
     let offset = repository_config.offset.unwrap_or(0);
 
     let mut errors = None;
-    let from_tag =
-        {
-            let (output, saved_state) = target.start_import(git_active_branches, env.clean)?;
+    let from_tag = {
+        let (output, saved_state) = target.start_import(git_active_branches)?;
 
-            let (from, from_tag) = if let Some(saved_state) = saved_state.as_ref() {
-                match saved_state {
-                    RepositorySavedState::OffsetedRevision(rev, from_tag) => {
-                        (rev - offset, from_tag - offset)
-                    }
+        let (from, from_tag) = if let Some(saved_state) = saved_state.as_ref() {
+            match saved_state {
+                RepositorySavedState::OffsetedRevision(rev, from_tag) => {
+                    (rev - offset, from_tag - offset)
                 }
-            } else {
-                (0, 0)
-            };
+            }
+        } else {
+            (0, 0)
+        };
 
-            info!("Exporting commits from {}", from);
+        info!("Exporting commits from {}", from);
 
-            let start = Instant::now();
-            let bar = ProgressBar::new((to - from) as u64);
+        let show_progress_bar = !env.cron;
+
+        let start = Instant::now();
+        let bar = ProgressBar::new((to - from) as u64);
+        if show_progress_bar {
             bar.set_style(ProgressStyle::default_bar().template(
                 "{spinner:.green}[{elapsed_precise}] [{wide_bar:.cyan/blue}] {msg} ({eta})",
             ));
-            for mut changeset in repo.range(from..to) {
+        }
+        for mut changeset in repo.range(from..to) {
+            if show_progress_bar {
                 bar.inc(1);
                 bar.set_message(&format!("{:6}/{}", changeset.revision.0, to));
-                match repo.export_commit(&mut changeset, counter, &mut brmap, output) {
-                    Ok(progress) => counter = progress,
-                    x => {
-                        errors = Some((x, changeset.revision.0));
-                        break;
-                    }
-                }
             }
 
-            if errors.is_none() {
+            match repo.export_commit(&mut changeset, counter, &mut brmap, output) {
+                Ok(progress) => counter = progress,
+                x => {
+                    errors = Some((x, changeset.revision.0));
+                    break;
+                }
+            }
+        }
+
+        if errors.is_none() {
+            if show_progress_bar {
                 bar.finish_with_message(&format!(
                     "Repository {} [{};{}). Elapsed: {}",
                     repourl.as_ref().to_str().unwrap(),
@@ -84,12 +91,13 @@ pub fn hg2git<P: AsRef<Path>>(
                     to,
                     HumanDuration(start.elapsed())
                 ));
-
-                counter = repo.export_tags(from_tag..to, counter, output)?;
             }
 
-            from_tag
-        };
+            counter = repo.export_tags(from_tag..to, counter, output)?;
+        }
+
+        from_tag
+    };
 
     if let Some((error, at)) = errors {
         if at > 0 {

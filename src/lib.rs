@@ -62,7 +62,6 @@ pub trait TargetRepository {
     fn start_import(
         &mut self,
         git_active_branches: Option<usize>,
-        clean: bool,
     ) -> Result<(&mut Write, Option<config::RepositorySavedState>), TargetRepositoryError>;
 
     fn finish(&mut self) -> Result<(), TargetRepositoryError>;
@@ -242,9 +241,17 @@ impl<'a> MercurialRepo<'a> {
         }
 
         info!(
-            "{}({}) {} {} {}",
-            mark, revision.0, branch, user, header.time
+            "{}({}) {} {} {} {}",
+            mark, revision.0, branch, user, desc, header.time
         );
+
+        if self.env.cron {
+            eprintln!(
+                "{}({}) {} {} {} {}",
+                mark, revision.0, branch, user, desc, header.time
+            );
+        }
+
         let prefix = strip_leading_slash(self.config.path_prefix.as_ref(), &"".into());
         for file in &mut changeset.files {
             match (&mut file.data, &mut file.manifest_entry) {

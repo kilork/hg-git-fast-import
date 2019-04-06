@@ -1,5 +1,8 @@
 use super::read_file;
-use super::{config::RepositorySavedState, TargetRepository, TargetRepositoryError};
+use super::{
+    config::RepositorySavedState, env::Environment, TargetRepository, TargetRepositoryError,
+};
+
 use std::collections::HashSet;
 use std::path::Path;
 use std::path::PathBuf;
@@ -8,7 +11,7 @@ use log::{debug, error, info};
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 
 pub struct StdoutTargetRepository<'a> {
     stdoutlock: std::io::StdoutLock<'a>,
@@ -24,7 +27,6 @@ impl<'a> TargetRepository for StdoutTargetRepository<'a> {
     fn start_import(
         &mut self,
         _git_active_branches: Option<usize>,
-        _clean: bool,
     ) -> Result<(&mut Write, Option<RepositorySavedState>), TargetRepositoryError> {
         Ok((&mut self.stdoutlock, None))
     }
@@ -33,19 +35,25 @@ impl<'a> TargetRepository for StdoutTargetRepository<'a> {
     }
 }
 
-pub struct GitTargetRepository {
+pub struct GitTargetRepository<'a> {
     path: PathBuf,
     fast_import_cmd: Option<Child>,
     saved_state: Option<RepositorySavedState>,
+    env: Option<&'a Environment>,
 }
 
-impl GitTargetRepository {
+impl<'a> GitTargetRepository<'a> {
     pub fn open<P: AsRef<Path>>(value: P) -> Self {
         Self {
             path: value.as_ref().into(),
             fast_import_cmd: None,
             saved_state: None,
+            env: None,
         }
+    }
+
+    pub fn set_env(&mut self, value: &'a Environment) {
+        self.env = Some(value);
     }
 
     fn get_saved_state_path(&self) -> PathBuf {
@@ -80,18 +88,43 @@ impl GitTargetRepository {
 
         Ok(())
     }
+
+    fn git(&self, args: &[&str], quiet: bool) -> ExitStatus {
+        self.git_cmd_quiet(|cmd| cmd.args(args), quiet)
+    }
+
+    fn git_cmd_quiet<F>(&self, mut f: F, quiet: bool) -> ExitStatus
+    where
+        F: FnMut(&mut Command) -> &mut Command,
+    {
+        self.git_cmd(|mut cmd| {
+            f(&mut cmd);
+            if quiet {
+                cmd.arg("--quiet");
+            }
+        })
+    }
+
+    fn git_cmd<F>(&self, mut f: F) -> ExitStatus
+    where
+        F: FnMut(&mut Command),
+    {
+        let mut git_cmd = Command::new("git");
+        f(&mut git_cmd);
+        git_cmd.current_dir(&self.path).status().unwrap()
+    }
 }
 
-impl TargetRepository for GitTargetRepository {
+impl<'a> TargetRepository for GitTargetRepository<'a> {
     fn start_import(
         &mut self,
         git_active_branches: Option<usize>,
-        clean: bool,
     ) -> Result<(&mut Write, Option<RepositorySavedState>), TargetRepositoryError> {
         let path = &self.path;
         let saved_state;
         info!("Checking Git repo: {}", path.to_str().unwrap());
 
+        let clean = self.env.map(|x| x.clean).unwrap_or_default();
         if path.exists() && clean {
             info!("Path exists, removing because of clean option");
             std::fs::remove_dir_all(path)?;
@@ -144,44 +177,38 @@ impl TargetRepository for GitTargetRepository {
     }
 
     fn finish(&mut self) -> Result<(), TargetRepositoryError> {
-        let path = Path::new(&self.path);
         info!("Waiting for Git fast-import to finish");
+
         let status = self.fast_import_cmd.as_mut().unwrap().wait()?;
         info!("Finished");
+
+        let cron = self.env.map(|x| x.cron).unwrap_or_default();
+
         let status = if status.success() {
             info!("Checking out HEAD revision");
-            Command::new("git")
-                .args(&["checkout", "HEAD"])
-                .current_dir(path)
-                .status()
-                .unwrap()
+            self.git(&["checkout", "HEAD"], cron)
         } else {
             error!("Git fast-import failed.");
             return Err(TargetRepositoryError::ImportFailed(status));
         };
+
         let status = if status.success() {
             info!("Resetting Git repo.");
-            Command::new("git")
-                .args(&["reset", "--hard"])
-                .current_dir(path)
-                .status()
-                .unwrap()
+            self.git(&["reset", "--hard"], cron)
         } else {
             panic!("Cannot reset Git repo.")
         };
+
         let status = if status.success() {
             info!("Cleanup Git repo");
-            Command::new("git")
-                .args(&["clean", "-d", "-x", "-f"])
-                .current_dir(path)
-                .status()
-                .unwrap()
+            self.git(&["clean", "-d", "-x", "-f"], cron)
         } else {
             panic!("Cannot reset Git repo.")
         };
         if !status.success() {
             panic!("Cannot checkout HEAD revision.");
         };
+
         Ok(())
     }
 

@@ -36,6 +36,9 @@ pub enum Cli {
         /// Recreate Git repo before import if it exists.
         #[structopt(long)]
         clean: bool,
+        /// Produce minimal output only if new revisions loaded or error happened.
+        #[structopt(long)]
+        cron: bool,
     },
     /// Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
     #[structopt(name = "multi")]
@@ -61,6 +64,9 @@ pub enum Cli {
         /// Recreate Git repo before import if it exists.
         #[structopt(long)]
         clean: bool,
+        /// Produce minimal output only if new revisions loaded or error happened.
+        #[structopt(long)]
+        cron: bool,
     },
     /// Generates completion scripts for your shell
     #[structopt(

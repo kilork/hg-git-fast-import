@@ -37,10 +37,11 @@ fn main() {
             git_active_branches,
             log,
             clean,
+            cron,
         } => {
             log.as_ref().map(setup_logger);
 
-            let env = load_environment(&authors, no_clean_closed_branches, clean);
+            let env = load_environment(&authors, no_clean_closed_branches, clean, cron);
 
             let repository_config = config.map_or_else(RepositoryConfig::default, |x| {
                 info!("Loading config");
@@ -54,6 +55,9 @@ fn main() {
             });
             if let Some(git_repo) = git_repo {
                 let mut git_target_repository = GitTargetRepository::open(git_repo);
+
+                git_target_repository.set_env(&env);
+
                 hg2git(
                     hg_repo,
                     verify,
@@ -78,10 +82,12 @@ fn main() {
                 .unwrap();
             }
             info!("Import done");
-            eprintln!(
-                "Finished. Time elapsed: {}",
-                HumanDuration(start_time.elapsed())
-            );
+            if !cron {
+                eprintln!(
+                    "Finished. Time elapsed: {}",
+                    HumanDuration(start_time.elapsed())
+                );
+            }
         }
         Multi {
             config,
@@ -91,10 +97,11 @@ fn main() {
             git_active_branches,
             log,
             clean,
+            cron,
         } => {
             log.as_ref().map(setup_logger);
 
-            let env = load_environment(&authors, no_clean_closed_branches, clean);
+            let env = load_environment(&authors, no_clean_closed_branches, clean, cron);
 
             info!("Loading config");
             let config_str = read_file(&config).unwrap();
@@ -102,10 +109,12 @@ fn main() {
             info!("Config loaded");
             multi2git(verify, git_active_branches, &env, &config, &multi_config).unwrap();
             info!("Import done");
-            eprintln!(
-                "Finished. Time elapsed: {}",
-                HumanDuration(start_time.elapsed())
-            );
+            if !cron {
+                eprintln!(
+                    "Finished. Time elapsed: {}",
+                    HumanDuration(start_time.elapsed())
+                );
+            }
         }
     }
 }
@@ -123,6 +132,7 @@ fn load_environment(
     authors: &Option<PathBuf>,
     no_clean_closed_branches: bool,
     clean: bool,
+    cron: bool,
 ) -> Environment {
     Environment {
         no_clean_closed_branches,
@@ -134,5 +144,6 @@ fn load_environment(
             authors
         }),
         clean,
+        cron,
     }
 }
