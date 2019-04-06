@@ -1,8 +1,8 @@
-# hg-git-fast-import - Mercurial to Git converter using git fast-import with multi repository import support
+# Mercurial to Git converter using git fast-import with multi repository import support
 
 ## Legal
 
-Dual-licensed under MIT or the [UNLICENSE](http://unlicense.org/).
+Dual-licensed under `MIT` or the [UNLICENSE](http://unlicense.org/).
 
 ## Features
 
@@ -86,11 +86,11 @@ Import of multiple repositories:
 
 ## Requirements
 
-- Rust 1.32
-- Diff 2.8
-- Git 2.19
-- Mercurial 4.8
-- Python 2.7
+- Rust 1.32 or later (2018 edition)
+- Git 2.19 (optional, if you use `single` mode without repo creation)
+- Diff 2.8 (optional, if you do not use `--verify`)
+- Mercurial 4.8 (optional, if you do not need delta load of revisions)
+- Python 2.7 (optional, required for `Mercurial`)
 
 ## Docker support
 
