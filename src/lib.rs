@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashSet;
 use std::ops::Range;
+use std::process::Command;
 
 use log::{info, trace};
 
@@ -103,6 +104,11 @@ pub trait TargetRepository {
     }
 }
 
+#[derive(Debug)]
+pub enum SourceRepositoryError {
+    PullFail(String),
+}
+
 struct MercurialRepo<'a> {
     path: PathBuf,
     inner: SharedMercurialRepository,
@@ -111,6 +117,7 @@ struct MercurialRepo<'a> {
 }
 
 impl<'a> MercurialRepo<'a> {
+    /// Open Mercurial repository.
     pub fn open<P: AsRef<Path>>(
         path: P,
         config: &'a config::RepositoryConfig,
@@ -122,6 +129,34 @@ impl<'a> MercurialRepo<'a> {
             config,
             env,
         })
+    }
+
+    /// Open Mercurial repository with pull by `hg pull -u` command before import.
+    /// Pull command triggered only if `env.source_pull` is `true`.
+    pub fn open_with_pull<P: AsRef<Path>>(
+        path: P,
+        config: &'a config::RepositoryConfig,
+        env: &'a env::Environment,
+    ) -> Result<MercurialRepo<'a>, ErrorKind> {
+        if env.source_pull {
+            let mut hg = Command::new("hg");
+            hg.args(&["pull", "-u"]);
+
+            if env.cron {
+                hg.arg("-q");
+            }
+
+            let status = hg.current_dir(path.as_ref()).status()?;
+            if !status.success() {
+                return Err(SourceRepositoryError::PullFail(format!(
+                    "Cannot pull {}",
+                    path.as_ref().to_str().unwrap()
+                ))
+                .into());
+            }
+        }
+
+        Self::open(path, config, env)
     }
 
     fn path(&self) -> &Path {

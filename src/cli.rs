@@ -42,6 +42,9 @@ pub enum Cli {
         /// Push target Git repository after successful import.
         #[structopt(name = "target-push", long)]
         target_push: bool,
+        /// Pull source Mercurial repository before import.
+        #[structopt(name = "source-pull", long)]
+        source_pull: bool,
     },
     /// Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
     #[structopt(name = "multi")]
@@ -73,6 +76,9 @@ pub enum Cli {
         /// Push target Git repository after successful import.
         #[structopt(name = "target-push", long)]
         target_push: bool,
+        /// Pull source Mercurial repository before import.
+        #[structopt(name = "source-pull", long)]
+        source_pull: bool,
     },
     /// Generates completion scripts for your shell
     #[structopt(

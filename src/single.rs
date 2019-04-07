@@ -20,7 +20,7 @@ pub fn hg2git<P: AsRef<Path>>(
     debug!("Config: {:?}", repository_config);
     debug!("Environment: {:?}", env);
 
-    let repo = MercurialRepo::open(repourl.as_ref(), repository_config, env)?;
+    let repo = MercurialRepo::open_with_pull(repourl.as_ref(), repository_config, env)?;
 
     if !repo.verify_heads(repository_config.allow_unnamed_heads)? {
         return Err(ErrorKind::VerifyFailure("Verify heads failed".into()));

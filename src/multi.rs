@@ -104,7 +104,7 @@ fn export_repository(
     let path_hg = construct_path(&config_path, &repo.path_hg);
 
     info!("Reading repo: {:?}", repo.path_hg);
-    let mercurial_repo = match MercurialRepo::open(&path_hg, &repo.config, env) {
+    let mercurial_repo = match MercurialRepo::open_with_pull(&path_hg, &repo.config, env) {
         Ok(repo) => repo,
         Err(ErrorKind::HgParserFailure(fail)) => panic!("Cannot open {:?}: {:?}", path_hg, fail),
         Err(other) => panic!("Cannot open {:?}: {:?}", path_hg, other),
