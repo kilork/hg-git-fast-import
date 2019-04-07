@@ -161,8 +161,6 @@ ccc = 'Qqq <qqq@another.dom>'
 'anotherhg' = 'othergit'
 ```
 
-See [single.toml](examples/single.toml).
-
 With `authors` and `branches` subsections one can rename authors and branches during import. Offset creates marks in Git repository. Can be useful if all marks files from imported repositories planned to be analyzed together. `allow_unnamed_heads` allows to start import in case of hanged heads in repository, currently this feature has no effect.
 
 ### Multi mode configuration example
@@ -221,8 +219,6 @@ branch_in_git = 'branch_in_hg'
 
 Each of child repositories will be imported in corresponding `path_git` from configuration, then single repository from top level `path_git` will reference child repositories as `remote`. For remote name either `alias` either `path_prefix` is taken.
 
-See [multi.toml](examples/multi.toml).
-
 ### Authors list configuration example
 
 ```toml
@@ -231,8 +227,6 @@ aaa = 'Bbb <bbb@company.xyz>'
 ccc = 'Qqq <qqq@another.dom>'
 'My <my_typo@wrong.xyz>' = 'My <my@normal.xyz>'
 ```
-
-See [authors.toml](examples/authors.toml).
 
 ## Requirements
 
