@@ -276,13 +276,13 @@ impl<'a> MercurialRepo<'a> {
         }
 
         info!(
-            "{}({}) {} {} {} {}",
+            "{}({}) | {} | {} | {} | {}",
             mark, revision.0, branch, user, desc, header.time
         );
 
         if self.env.cron {
             eprintln!(
-                "{}({}) {} {} {} {}",
+                "{}({}) | {} | {} | {} | {}",
                 mark, revision.0, branch, user, desc, header.time
             );
         }
