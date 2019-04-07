@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct RepositoryConfig {
     pub offset: Option<usize>,
     pub authors: Option<HashMap<String, String>>,
@@ -36,7 +36,7 @@ impl Default for RepositoryConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default, PartialEq)]
 pub struct PathRepositoryConfig {
     pub alias: Option<String>,
     pub path_hg: PathBuf,
@@ -46,7 +46,7 @@ pub struct PathRepositoryConfig {
     pub merged_branches: Option<HashMap<String, String>>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct MultiConfig {
     pub path_git: PathBuf,
     pub repositories: Vec<PathRepositoryConfig>,
@@ -60,7 +60,7 @@ pub enum RepositorySavedState {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn repository_saved_state_to_toml() {
@@ -71,50 +71,95 @@ mod tests {
     }
 
     #[test]
-    fn multiconfig_read_from_toml() {
-        let src = r#"path_git = "000_git"
-
-[[repositories]]
-path_hg = "001_hg"
-path_git = "001_git"
-
-[repositories.config]
-allow_unnamed_heads = true
-offset = 1000
-path_prefix = 'prefix1'
-tag_prefix = 'prefix2-'
-branch_prefix = 'prefix3-'
-
-[repositories.config.authors]
-'aaa' = 'bbb'
-
-[repositories.config.branches]
-'branch1' = 'branch2'
-
-[[repositories]]
-alias = "another_002"
-path_hg = "002_hg"
-path_git = "002_git"
-
-"#;
-        let result: super::MultiConfig = toml::from_str(src).unwrap();
-        assert_eq!(2, result.repositories.len());
-
-        let repository = &result.repositories[0];
-        assert_eq!(PathBuf::from("001_hg"), repository.path_hg);
-        assert!(repository.config.allow_unnamed_heads);
-        assert_eq!(Some(1000), repository.config.offset);
-        assert_eq!(Some("prefix1".into()), repository.config.path_prefix);
-        assert_eq!(Some("prefix2-".into()), repository.config.tag_prefix);
-        assert_eq!(Some("prefix3-".into()), repository.config.branch_prefix);
-        let authors = &repository.config.authors.as_ref().unwrap();
-        assert_eq!(authors.get(&"aaa".to_string()), Some(&String::from("bbb")));
-        let branches = &repository.config.branches.as_ref().unwrap();
+    fn singleconfig_read_from_toml() {
+        let src = include_str!("../examples/single.toml");
+        let result: super::RepositoryConfig = toml::from_str(src).unwrap();
         assert_eq!(
-            branches.get(&"branch1".to_string()),
-            Some(&String::from("branch2"))
-        );
+            result,
+            super::RepositoryConfig {
+                allow_unnamed_heads: true,
+                offset: Some(1000),
+                path_prefix: Some("prefix1".into()),
+                tag_prefix: Some("prefix2-".into()),
+                branch_prefix: Some("prefix3-".into()),
+                authors: Some(
+                    vec![
+                        ("aaa 1".into(), "Bbb <bbb@company.xyz>".into()),
+                        ("aaa".into(), "Bbb <bbb@company.xyz>".into()),
+                        ("ccc".into(), "Qqq <qqq@another.dom>".into()),
+                        ("My <my_typo@wrong.xyz>".into(), "My <my@normal.xyz>".into()),
+                    ]
+                    .into_iter()
+                    .collect()
+                ),
+                branches: Some(
+                    vec![
+                        ("anotherhg".into(), "othergit".into()),
+                        ("branch in hg".into(), "branch-in-git".into()),
+                    ]
+                    .into_iter()
+                    .collect()
+                ),
+                ..Default::default()
+            }
+        )
+    }
 
-        assert_eq!(PathBuf::from("002_hg"), result.repositories[1].path_hg);
+    #[test]
+    fn multiconfig_read_from_toml() {
+        let src = include_str!("../examples/multi.toml");
+        let result: super::MultiConfig = toml::from_str(src).unwrap();
+
+        assert_eq!(
+            result,
+            super::MultiConfig {
+                path_git: "000_git".into(),
+                repositories: vec![
+                    super::PathRepositoryConfig {
+                        path_hg: "001_hg".into(),
+                        path_git: "001_git".into(),
+                        config: super::RepositoryConfig {
+                            allow_unnamed_heads: true,
+                            offset: Some(1000),
+                            path_prefix: Some("prefix1".into()),
+                            tag_prefix: Some("prefix2-".into()),
+                            branch_prefix: Some("prefix3-".into()),
+                            prefix_default_branch: true,
+                            authors: Some(
+                                vec![("aaa".into(), "Bbb <bbb@company.xyz>".into()),]
+                                    .into_iter()
+                                    .collect()
+                            ),
+                            branches: Some(
+                                vec![("branch1".into(), "branch2".into()),]
+                                    .into_iter()
+                                    .collect()
+                            ),
+                            ..Default::default()
+                        },
+                        merged_branches: Some(
+                            vec![("branch_in_git".into(), "branch2".into()),]
+                                .into_iter()
+                                .collect()
+                        ),
+                        ..Default::default()
+                    },
+                    super::PathRepositoryConfig {
+                        alias: Some("another_002".into()),
+                        path_hg: "002_hg".into(),
+                        path_git: "002_git".into(),
+                        config: super::RepositoryConfig {
+                            ..Default::default()
+                        },
+                        merged_branches: Some(
+                            vec![("branch_in_git".into(), "branch_in_hg".into()),]
+                                .into_iter()
+                                .collect()
+                        ),
+                        ..Default::default()
+                    }
+                ]
+            }
+        );
     }
 }

@@ -1,0 +1,35 @@
+# Allows to start import in of hanged heads in repository
+# (currently has no effect, default value is true). Optional.
+allow_unnamed_heads = true
+# Offset for git fast-import marks in Git repository. Optional, default is 0.
+offset = 1000
+# Path prefix in target repository. If path_prefix = 'test',
+# all files will be under test folder in target Git repository.
+# Optional.
+path_prefix = 'prefix1'
+# Tag prefix in target repository. Optional.
+tag_prefix = 'prefix2-'
+# Branch prefix in target repository. Optional.
+branch_prefix = 'prefix3-'
+# By default master branch is not prefixed by branch_prefix.
+# This behavior can be changed by specifying this as true.
+# Optional.
+prefix_default_branch = false
+
+# Mapping between authors in Mercurial and authors in Git.
+# Required mainly because of Git asks for particular format "Somename <email@address>".
+# But also can be used to fix typos and etc.
+[authors]
+'aaa 1' = 'Bbb <bbb@company.xyz>'
+aaa = 'Bbb <bbb@company.xyz>'
+ccc = 'Qqq <qqq@another.dom>'
+'My <my_typo@wrong.xyz>' = 'My <my@normal.xyz>'
+
+# Mapping between branches in Mercurial and branches in Git.
+# Required mainly because Git does not allow some characters,
+# which allowed in Mercurial, for example - spaces.
+# Branches taken from mapping will not have branch_prefix,
+# so it must be added to mapped values.
+[branches]
+'branch in hg' = 'branch-in-git'
+'anotherhg' = 'othergit'

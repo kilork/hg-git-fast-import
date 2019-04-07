@@ -1,0 +1,4 @@
+'aaa 1' = 'Bbb <bbb@company.xyz>'
+aaa = 'Bbb <bbb@company.xyz>'
+ccc = 'Qqq <qqq@another.dom>'
+'My <my_typo@wrong.xyz>' = 'My <my@normal.xyz>'
