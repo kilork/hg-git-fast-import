@@ -11,4 +11,5 @@ pub struct Environment {
     pub target_push: bool,
     pub target_pull: bool,
     pub source_pull: bool,
+    pub fix_wrong_branchname: bool,
 }

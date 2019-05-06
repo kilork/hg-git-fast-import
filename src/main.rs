@@ -138,5 +138,6 @@ fn load_environment(common: &Common) -> Environment {
         target_push: common.target_push,
         target_pull: common.target_pull,
         source_pull: common.source_pull,
+        fix_wrong_branchname: common.fix_wrong_branchname,
     }
 }

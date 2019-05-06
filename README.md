@@ -58,6 +58,7 @@ Import of single repository:
     FLAGS:
             --clean                       Recreate Git repo before import if it exists.
             --cron                        Produce minimal output only if new revisions loaded or error happened.
+            --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format).
         -h, --help                        Prints help information
             --no-clean-closed-branches    Do not clean closed Mercurial branches.
             --source-pull                 Pull source Mercurial repository before import.
@@ -92,6 +93,7 @@ Import of multiple repositories:
     FLAGS:
             --clean                       Recreate Git repo before import if it exists.
             --cron                        Produce minimal output only if new revisions loaded or error happened.
+            --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format).
         -h, --help                        Prints help information
             --no-clean-closed-branches    Do not clean closed Mercurial branches.
             --source-pull                 Pull source Mercurial repository before import.

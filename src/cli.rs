@@ -74,4 +74,7 @@ pub struct Common {
     /// Pull source Mercurial repository before import.
     #[structopt(name = "source-pull", long)]
     pub source_pull: bool,
+    /// Fix wrong Mercurial branch names (not compatible with git ref format).
+    #[structopt(name = "fix-wrong-branch-names", long)]
+    pub fix_wrong_branchname: bool,
 }

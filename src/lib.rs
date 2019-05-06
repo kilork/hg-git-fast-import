@@ -66,6 +66,7 @@ USAGE:
 FLAGS:
         --clean                       Recreate Git repo before import if it exists.
         --cron                        Produce minimal output only if new revisions loaded or error happened.
+        --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format).
     -h, --help                        Prints help information
         --no-clean-closed-branches    Do not clean closed Mercurial branches.
         --source-pull                 Pull source Mercurial repository before import.
@@ -102,6 +103,7 @@ USAGE:
 FLAGS:
         --clean                       Recreate Git repo before import if it exists.
         --cron                        Produce minimal output only if new revisions loaded or error happened.
+        --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format).
     -h, --help                        Prints help information
         --no-clean-closed-branches    Do not clean closed Mercurial branches.
         --source-pull                 Pull source Mercurial repository before import.
@@ -505,14 +507,14 @@ impl<'a> MercurialRepo<'a> {
         let branch: String = std::str::from_utf8(branch.unwrap_or_else(|| b"master"))?.into();
 
         let branch = brmap.entry(branch.clone()).or_insert_with(|| {
-            sanitize_name(
+            sanitize_branchname(
                 &branch,
                 if branch != "master" || self.config.prefix_default_branch {
                     self.config.branch_prefix.as_ref()
                 } else {
                     None
                 },
-                "branch",
+                self.env.fix_wrong_branchname,
             )
         });
 
@@ -625,9 +627,81 @@ fn strip_leading_slash(prefix: Option<&String>, x: &String) -> String {
     prefix.map_or_else(|| x.to_string(), |p| format!("{}/{}", p, x))
 }
 
+fn sanitize_branchname(name: &str, prefix: Option<&String>, fix_branch_name: bool) -> String {
+    let branchname = sanitize_name(name, prefix, "branch");
+    if !fix_branch_name {
+        return branchname;
+    }
+    let mut result = String::new();
+    let mut chars = branchname.chars().peekable();
+    let mut last = None;
+    while let Some(&c) = chars.peek() {
+        if c != '/' {
+            break;
+        }
+        result.push(c);
+        last = chars.next();
+    }
+    while let Some(&c) = chars.peek() {
+        let c = match c {
+            '\0'...' ' | '~' | '^' | ':' | '\\' => '-',
+            '.' if last == Some('.') || last == None => '-',
+            c => c,
+        };
+        result.push(c);
+        last = chars.next();
+    }
+    if result.ends_with("/") {
+        result.remove(result.len() - 1);
+        result.push('-');
+    }
+    if result.ends_with(".lock") {
+        result.replace_range((result.len() - 5)..=(result.len() - 5), "-");
+    }
+    result
+}
+
 fn sanitize_name(name: &str, prefix: Option<&String>, what: &str) -> String {
     trace!("Sanitize {} '{}'", what, name);
     prefix.map_or_else(|| name.into(), |p| format!("{}{}", p, name))
 
     //TODO: git-check-ref-format
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_branchnames() {
+        assert_eq!(&sanitize_branchname("normal", None, false), "normal");
+        assert_eq!(&sanitize_branchname("normal", None, true), "normal");
+        assert_eq!(&sanitize_branchname("////normal", None, true), "////normal");
+        assert_eq!(
+            &sanitize_branchname("with spaces  ", None, true),
+            "with-spaces--"
+        );
+        assert_eq!(
+            &sanitize_branchname("with spaces  ", Some(&"prefix-".into()), true),
+            "prefix-with-spaces--"
+        );
+        assert_eq!(
+            &sanitize_branchname(".dotatstart", None, true),
+            "-dotatstart"
+        );
+        assert_eq!(
+            &sanitize_branchname("dots.in.the.middle", None, true),
+            "dots.in.the.middle"
+        );
+        assert_eq!(
+            &sanitize_branchname("doubledots..", None, true),
+            "doubledots.-"
+        );
+        assert_eq!(&sanitize_branchname("...", None, true), "---");
+        assert_eq!(
+            &sanitize_branchname("branch.lock", None, true),
+            "branch-lock"
+        );
+        assert_eq!(&sanitize_branchname("//qqq//", None, true), "//qqq/-");
+    }
 }
