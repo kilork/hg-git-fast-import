@@ -9,5 +9,6 @@ pub struct Environment {
     pub clean: bool,
     pub cron: bool,
     pub target_push: bool,
+    pub target_pull: bool,
     pub source_pull: bool,
 }

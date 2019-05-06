@@ -209,7 +209,19 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
             panic!("Cannot cleanup Git repo.");
         };
 
-        let target_push = self.env.map(|x| x.target_push).unwrap_or_default();
+        let (target_push, target_pull) = self
+            .env
+            .map(|x| (x.target_push, x.target_pull))
+            .unwrap_or_default();
+
+        if target_pull {
+            info!("Pulling Git repo.");
+            let status = self.git(&["pull", "--all", "--tags"], cron);
+            if !status.success() {
+                panic!("Cannot pull target Git repo.");
+            };
+        }
+
         if target_push {
             info!("Pushing Git repo.");
             let status = self.git(&["push", "--all"], cron);

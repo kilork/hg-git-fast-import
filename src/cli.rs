@@ -15,36 +15,11 @@ pub enum Cli {
         /// Repository configuration in toml format.
         #[structopt(parse(from_os_str), long, short)]
         config: Option<PathBuf>,
-        /// Authors remapping in toml format.
-        #[structopt(parse(from_os_str), long, short)]
-        authors: Option<PathBuf>,
-        /// Do not clean closed Mercurial branches.
-        #[structopt(name = "no-clean-closed-branches", long)]
-        no_clean_closed_branches: bool,
-        /// Compares resulting Git repo with Mercurial.
-        #[structopt(long)]
-        verify: bool,
         /// Limit high revision to import.
         #[structopt(name = "limit-high", long)]
         limit_high: Option<usize>,
-        /// Git maximum number of branches to maintain active at once.
-        #[structopt(name = "git-active-branches", long)]
-        git_active_branches: Option<usize>,
-        /// Log file. If present - additional log info would be printed to this file.
-        #[structopt(parse(from_os_str), long)]
-        log: Option<PathBuf>,
-        /// Recreate Git repo before import if it exists.
-        #[structopt(long)]
-        clean: bool,
-        /// Produce minimal output only if new revisions loaded or error happened.
-        #[structopt(long)]
-        cron: bool,
-        /// Push target Git repository after successful import.
-        #[structopt(name = "target-push", long)]
-        target_push: bool,
-        /// Pull source Mercurial repository before import.
-        #[structopt(name = "source-pull", long)]
-        source_pull: bool,
+        #[structopt(flatten)]
+        common: Common,
     },
     /// Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
     #[structopt(name = "multi")]
@@ -52,33 +27,8 @@ pub enum Cli {
         /// Repositories configuration in toml format.
         #[structopt(parse(from_os_str), long, short)]
         config: PathBuf,
-        /// Authors remapping in toml format.
-        #[structopt(parse(from_os_str), long, short)]
-        authors: Option<PathBuf>,
-        /// Do not clean closed Mercurial branches.
-        #[structopt(name = "no-clean-closed-branches", long)]
-        no_clean_closed_branches: bool,
-        /// Compares resulting Git repositories with Mercurial (only final state with subfolders).
-        #[structopt(long)]
-        verify: bool,
-        /// Git maximum number of branches to maintain active at once.
-        #[structopt(name = "git-active-branches", long)]
-        git_active_branches: Option<usize>,
-        /// Log file. If present - additional log info would be printed to this file.
-        #[structopt(parse(from_os_str), long)]
-        log: Option<PathBuf>,
-        /// Recreate Git repo before import if it exists.
-        #[structopt(long)]
-        clean: bool,
-        /// Produce minimal output only if new revisions loaded or error happened.
-        #[structopt(long)]
-        cron: bool,
-        /// Push target Git repository after successful import.
-        #[structopt(name = "target-push", long)]
-        target_push: bool,
-        /// Pull source Mercurial repository before import.
-        #[structopt(name = "source-pull", long)]
-        source_pull: bool,
+        #[structopt(flatten)]
+        common: Common,
     },
     /// Generates completion scripts for your shell
     #[structopt(
@@ -90,4 +40,38 @@ pub enum Cli {
         #[structopt(raw(possible_values = r#"&["bash", "fish", "zsh"]"#))]
         shell: structopt::clap::Shell,
     },
+}
+
+#[derive(Debug, StructOpt)]
+pub struct Common {
+    /// Authors remapping in toml format.
+    #[structopt(parse(from_os_str), long, short)]
+    pub authors: Option<PathBuf>,
+    /// Do not clean closed Mercurial branches.
+    #[structopt(name = "no-clean-closed-branches", long)]
+    pub no_clean_closed_branches: bool,
+    /// Compares resulting Git repo with Mercurial.
+    #[structopt(long)]
+    pub verify: bool,
+    /// Git maximum number of branches to maintain active at once.
+    #[structopt(name = "git-active-branches", long)]
+    pub git_active_branches: Option<usize>,
+    /// Log file. If present - additional log info would be printed to this file.
+    #[structopt(parse(from_os_str), long)]
+    pub log: Option<PathBuf>,
+    /// Recreate Git repo before import if it exists.
+    #[structopt(long)]
+    pub clean: bool,
+    /// Produce minimal output only if new revisions loaded or error happened.
+    #[structopt(long)]
+    pub cron: bool,
+    /// Push target Git repository after successful import.
+    #[structopt(name = "target-push", long)]
+    pub target_push: bool,
+    /// Pull target Git repository before push.
+    #[structopt(name = "target-pull", long)]
+    pub target_pull: bool,
+    /// Pull source Mercurial repository before import.
+    #[structopt(name = "source-pull", long)]
+    pub source_pull: bool,
 }

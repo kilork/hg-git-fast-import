@@ -16,7 +16,10 @@ use hg_git_fast_import::{multi::multi2git, read_file, single::hg2git};
 
 mod cli;
 
-use self::cli::Cli::{self, *};
+use self::cli::{
+    Cli::{self, *},
+    Common,
+};
 
 fn main() {
     let start_time = Instant::now();
@@ -30,27 +33,12 @@ fn main() {
             hg_repo,
             git_repo,
             config,
-            authors,
-            no_clean_closed_branches,
-            verify,
             limit_high,
-            git_active_branches,
-            log,
-            clean,
-            cron,
-            target_push,
-            source_pull,
+            common,
         } => {
-            log.as_ref().map(setup_logger);
+            common.log.as_ref().map(setup_logger);
 
-            let env = load_environment(
-                &authors,
-                no_clean_closed_branches,
-                clean,
-                cron,
-                target_push,
-                source_pull,
-            );
+            let env = load_environment(&common);
 
             let repository_config = config.map_or_else(RepositoryConfig::default, |x| {
                 info!("Loading config");
@@ -69,8 +57,8 @@ fn main() {
 
                 hg2git(
                     hg_repo,
-                    verify,
-                    git_active_branches,
+                    common.verify,
+                    common.git_active_branches,
                     &mut git_target_repository,
                     &env,
                     &repository_config,
@@ -82,8 +70,8 @@ fn main() {
                 let mut stdout_target = StdoutTargetRepository::from(stdoutlock);
                 hg2git(
                     hg_repo,
-                    verify,
-                    git_active_branches,
+                    common.verify,
+                    common.git_active_branches,
                     &mut stdout_target,
                     &env,
                     &repository_config,
@@ -91,43 +79,32 @@ fn main() {
                 .unwrap();
             }
             info!("Import done");
-            if !cron {
+            if !common.cron {
                 eprintln!(
                     "Finished. Time elapsed: {}",
                     HumanDuration(start_time.elapsed())
                 );
             }
         }
-        Multi {
-            config,
-            authors,
-            no_clean_closed_branches,
-            verify,
-            git_active_branches,
-            log,
-            clean,
-            cron,
-            target_push,
-            source_pull,
-        } => {
-            log.as_ref().map(setup_logger);
+        Multi { config, common } => {
+            common.log.as_ref().map(setup_logger);
 
-            let env = load_environment(
-                &authors,
-                no_clean_closed_branches,
-                clean,
-                cron,
-                target_push,
-                source_pull,
-            );
+            let env = load_environment(&common);
 
             info!("Loading config");
             let config_str = read_file(&config).unwrap();
             let multi_config = toml::from_str(&config_str).unwrap();
             info!("Config loaded");
-            multi2git(verify, git_active_branches, &env, &config, &multi_config).unwrap();
+            multi2git(
+                common.verify,
+                common.git_active_branches,
+                &env,
+                &config,
+                &multi_config,
+            )
+            .unwrap();
             info!("Import done");
-            if !cron {
+            if !common.cron {
                 eprintln!(
                     "Finished. Time elapsed: {}",
                     HumanDuration(start_time.elapsed())
@@ -146,26 +123,20 @@ fn setup_logger(log: &PathBuf) {
     .unwrap();
 }
 
-fn load_environment(
-    authors: &Option<PathBuf>,
-    no_clean_closed_branches: bool,
-    clean: bool,
-    cron: bool,
-    target_push: bool,
-    source_pull: bool,
-) -> Environment {
+fn load_environment(common: &Common) -> Environment {
     Environment {
-        no_clean_closed_branches,
-        authors: authors.as_ref().map(|x| {
+        no_clean_closed_branches: common.no_clean_closed_branches,
+        authors: common.authors.as_ref().map(|x| {
             info!("Loading authors");
             let authors_str = read_file(&x).unwrap();
             let authors = toml::from_str(&authors_str).unwrap();
             info!("Authors list loaded");
             authors
         }),
-        clean,
-        cron,
-        target_push,
-        source_pull,
+        clean: common.clean,
+        cron: common.cron,
+        target_push: common.target_push,
+        target_pull: common.target_pull,
+        source_pull: common.source_pull,
     }
 }
