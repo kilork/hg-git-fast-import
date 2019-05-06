@@ -29,7 +29,7 @@ From source:
 **hg-git-fast-import** is a command-line utility, usage info can be access with --help argument:
 
     $ hg-git-fast-import --help
-    hg-git-fast-import 1.0.0
+    hg-git-fast-import 1.1.0
     Alexander Korolev <kilork@yandex.ru>
     A utility to import single and multiple Mercurial repositories to Git.
 
@@ -48,7 +48,7 @@ From source:
 Import of single repository:
 
     $ hg-git-fast-import single --help
-    hg-git-fast-import-single 1.0.0
+    hg-git-fast-import-single 1.1.0
     Alexander Korolev <kilork@yandex.ru>
     Exports single Mercurial repository to Git fast-import compatible format
 
@@ -61,6 +61,7 @@ Import of single repository:
         -h, --help                        Prints help information
             --no-clean-closed-branches    Do not clean closed Mercurial branches.
             --source-pull                 Pull source Mercurial repository before import.
+            --target-pull                 Pull target Git repository before push.
             --target-push                 Push target Git repository after successful import.
         -V, --version                     Prints version information
             --verify                      Compares resulting Git repo with Mercurial.
@@ -81,7 +82,7 @@ Import of single repository:
 Import of multiple repositories:
 
     $ hg-git-fast-import multi --help
-    hg-git-fast-import-multi 1.0.0
+    hg-git-fast-import-multi 1.1.0
     Alexander Korolev <kilork@yandex.ru>
     Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
 
@@ -94,10 +95,10 @@ Import of multiple repositories:
         -h, --help                        Prints help information
             --no-clean-closed-branches    Do not clean closed Mercurial branches.
             --source-pull                 Pull source Mercurial repository before import.
+            --target-pull                 Pull target Git repository before push.
             --target-push                 Push target Git repository after successful import.
         -V, --version                     Prints version information
-            --verify                      Compares resulting Git repositories with Mercurial (only final state with
-                                        subfolders).
+            --verify                      Compares resulting Git repo with Mercurial.
 
     OPTIONS:
         -a, --authors <authors>                            Authors remapping in toml format.
