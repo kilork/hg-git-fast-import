@@ -216,10 +216,7 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
 
         if target_pull {
             info!("Pulling Git repo.");
-            let status = self.git(&["pull", "--all", "--tags"], cron);
-            if !status.success() {
-                panic!("Cannot pull target Git repo.");
-            };
+            self.fetch_all()?;
         }
 
         if target_push {
