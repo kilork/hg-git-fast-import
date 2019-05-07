@@ -86,7 +86,7 @@ pub fn multi2git<P: AsRef<Path>>(
                 git_repo.merge_unrelated(&[branch_from.as_ref()])?;
             }
         } else {
-            let branches_from_str: Vec<_> = branches_from.iter().map(|x| x.as_ref()).collect();
+            let branches_from_str: Vec<_> = branches_from.iter().map(AsRef::as_ref).collect();
             git_repo.merge_unrelated(&branches_from_str)?;
         }
     }

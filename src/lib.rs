@@ -651,7 +651,7 @@ fn sanitize_branchname(name: &str, prefix: Option<&String>, fix_branch_name: boo
         result.push(c);
         last = chars.next();
     }
-    if result.ends_with("/") {
+    if result.ends_with('/') {
         result.remove(result.len() - 1);
         result.push('-');
     }
