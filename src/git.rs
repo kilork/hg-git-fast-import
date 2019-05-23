@@ -75,16 +75,26 @@ impl<'a> GitTargetRepository<'a> {
         }
 
         info!("Configure Git repo");
-        let status = Command::new("git")
-            .args(&["config", "core.ignoreCase", "false"])
-            .current_dir(path)
-            .status()?;
+        self.git_config("core.ignoreCase", "false")?;
+
+        info!("New Git repo initialization done");
+
+        Ok(())
+    }
+
+    pub fn git_cmd(&self, args: &[&str]) -> Command {
+        let mut git_cmd = Command::new("git");
+        git_cmd.current_dir(&self.path).args(args);
+        git_cmd
+    }
+
+    fn git_config(&self, key: &str, value: &str) -> Result<(), TargetRepositoryError> {
+        let status = self.git_cmd(&["config", key, value]).status()?;
+
         if !status.success() {
             error!("Cannot configure Git repo");
             return Err(TargetRepositoryError::CannotConfigRepo(status));
         }
-
-        info!("New Git repo initialization done");
 
         Ok(())
     }
@@ -97,7 +107,7 @@ impl<'a> GitTargetRepository<'a> {
     where
         F: FnMut(&mut Command) -> &mut Command,
     {
-        self.git_cmd(|mut cmd| {
+        self.git_cmd_status(|mut cmd| {
             f(&mut cmd);
             if quiet {
                 cmd.arg("--quiet");
@@ -105,7 +115,7 @@ impl<'a> GitTargetRepository<'a> {
         })
     }
 
-    fn git_cmd<F>(&self, mut f: F) -> ExitStatus
+    fn git_cmd_status<F>(&self, mut f: F) -> ExitStatus
     where
         F: FnMut(&mut Command),
     {

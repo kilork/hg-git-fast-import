@@ -298,6 +298,7 @@ pub mod env;
 pub mod error;
 pub mod git;
 pub mod multi;
+pub mod tools;
 pub mod single;
 
 use self::config::RepositorySavedState;
@@ -323,6 +324,7 @@ pub enum TargetRepositoryError {
     CannotInitRepo(ExitStatus),
     CannotConfigRepo(ExitStatus),
     ImportFailed(ExitStatus),
+    GitFailure(ExitStatus),
     IOError(std::io::Error),
     VerifyFail,
 }

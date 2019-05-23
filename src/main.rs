@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Instant;
 
 use indicatif::HumanDuration;
@@ -13,7 +13,7 @@ use structopt::StructOpt;
 use hg_git_fast_import::config::RepositoryConfig;
 use hg_git_fast_import::env::Environment;
 use hg_git_fast_import::git::{GitTargetRepository, StdoutTargetRepository};
-use hg_git_fast_import::{multi::multi2git, read_file, single::hg2git};
+use hg_git_fast_import::{multi::multi2git, read_file, single::hg2git, tools::build_marks};
 
 mod cli;
 
@@ -118,6 +118,13 @@ fn main() {
             git_repo,
             offset,
         } => {
+            build_marks(
+                authors.as_ref().map(load_authors),
+                hg_repo,
+                git_repo,
+                offset,
+            )
+            .unwrap();
             // git log --reflog --reverse --format="format:%H%n%at%n%an <%ae>%n%s"
         }
     }
