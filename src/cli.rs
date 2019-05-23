@@ -30,6 +30,22 @@ pub enum Cli {
         #[structopt(flatten)]
         common: Common,
     },
+    /// Rebuilds saved state of repo in case of 'git gc' run or other reasons
+    #[structopt(name = "build-marks")]
+    BuildMarks {
+        /// Authors remapping in toml format.
+        #[structopt(parse(from_os_str), long, short)]
+        authors: Option<PathBuf>,
+        /// The Mercurial repo which was imported to git
+        #[structopt(parse(from_os_str))]
+        hg_repo: PathBuf,
+        /// The Git repo to save state to. Existing saved state would be updated with actual state.
+        #[structopt(parse(from_os_str))]
+        git_repo: PathBuf,
+        /// Offset for git fast-import marks in Git repository. Optional, default is 0
+        #[structopt(long, short)]
+        offset: Option<usize>,
+    },
     /// Generates completion scripts for your shell
     #[structopt(
         name = "completions",

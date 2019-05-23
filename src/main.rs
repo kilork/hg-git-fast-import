@@ -1,6 +1,7 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use indicatif::HumanDuration;
@@ -111,10 +112,18 @@ fn main() {
                 );
             }
         }
+        BuildMarks {
+            authors,
+            hg_repo,
+            git_repo,
+            offset,
+        } => {
+            // git log --reflog --reverse --format="format:%H%n%at%n%an <%ae>%n%s"
+        }
     }
 }
 
-fn setup_logger(log: &PathBuf) {
+fn setup_logger(log: impl AsRef<Path>) {
     WriteLogger::init(
         LevelFilter::Info,
         Config::default(),
@@ -126,13 +135,7 @@ fn setup_logger(log: &PathBuf) {
 fn load_environment(common: &Common) -> Environment {
     Environment {
         no_clean_closed_branches: common.no_clean_closed_branches,
-        authors: common.authors.as_ref().map(|x| {
-            info!("Loading authors");
-            let authors_str = read_file(&x).unwrap();
-            let authors = toml::from_str(&authors_str).unwrap();
-            info!("Authors list loaded");
-            authors
-        }),
+        authors: common.authors.as_ref().map(load_authors),
         clean: common.clean,
         cron: common.cron,
         target_push: common.target_push,
@@ -140,4 +143,12 @@ fn load_environment(common: &Common) -> Environment {
         source_pull: common.source_pull,
         fix_wrong_branchname: common.fix_wrong_branchname,
     }
+}
+
+fn load_authors(p: impl AsRef<Path>) -> HashMap<String, String> {
+    info!("Loading authors");
+    let authors_str = read_file(p).unwrap();
+    let authors = toml::from_str(&authors_str).unwrap();
+    info!("Authors list loaded");
+    authors
 }

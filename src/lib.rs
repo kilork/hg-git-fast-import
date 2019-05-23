@@ -308,7 +308,7 @@ use hg_parser::{
     SharedMercurialRepository,
 };
 
-pub fn read_file(filename: &PathBuf) -> io::Result<String> {
+pub fn read_file(filename: impl AsRef<Path>) -> io::Result<String> {
     let mut file = File::open(filename)?;
     let mut buf = String::new();
     file.read_to_string(&mut buf)?;
