@@ -112,20 +112,14 @@ fn main() {
                 );
             }
         }
-        BuildMarks {
-            authors,
-            hg_repo,
-            git_repo,
-            offset,
-        } => {
+        BuildMarks { args } => {
             build_marks(
-                authors.as_ref().map(load_authors),
-                hg_repo,
-                git_repo,
-                offset,
+                args.authors.as_ref().map(load_authors),
+                args.hg_repo,
+                args.git_repo,
+                args.offset,
             )
             .unwrap();
-            // git log --reflog --reverse --format="format:%H%n%at%n%an <%ae>%n%s"
         }
     }
 }

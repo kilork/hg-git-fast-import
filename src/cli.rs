@@ -33,18 +33,8 @@ pub enum Cli {
     /// Rebuilds saved state of repo in case of 'git gc' run or other reasons
     #[structopt(name = "build-marks")]
     BuildMarks {
-        /// Authors remapping in toml format.
-        #[structopt(parse(from_os_str), long, short)]
-        authors: Option<PathBuf>,
-        /// The Mercurial repo which was imported to git
-        #[structopt(parse(from_os_str))]
-        hg_repo: PathBuf,
-        /// The Git repo to save state to. Existing saved state would be updated with actual state.
-        #[structopt(parse(from_os_str))]
-        git_repo: PathBuf,
-        /// Offset for git fast-import marks in Git repository. Optional, default is 0
-        #[structopt(long, short)]
-        offset: Option<usize>,
+        #[structopt(flatten)]
+        args: BuildMarksArgs,
     },
     /// Generates completion scripts for your shell
     #[structopt(
@@ -56,6 +46,22 @@ pub enum Cli {
         #[structopt(raw(possible_values = r#"&["bash", "fish", "zsh"]"#))]
         shell: structopt::clap::Shell,
     },
+}
+
+#[derive(Debug, StructOpt)]
+pub struct BuildMarksArgs {
+    /// Authors remapping in toml format.
+    #[structopt(parse(from_os_str), long, short)]
+    pub authors: Option<PathBuf>,
+    /// The Mercurial repo which was imported to git
+    #[structopt(parse(from_os_str))]
+    pub hg_repo: PathBuf,
+    /// The Git repo to save state to. Existing saved state would be updated with actual state.
+    #[structopt(parse(from_os_str))]
+    pub git_repo: PathBuf,
+    /// Offset for git fast-import marks in Git repository. Optional, default is 0
+    #[structopt(long, short)]
+    pub offset: Option<usize>,
 }
 
 #[derive(Debug, StructOpt)]

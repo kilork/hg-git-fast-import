@@ -56,6 +56,10 @@ impl<'a> GitTargetRepository<'a> {
         self.env = Some(value);
     }
 
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
     fn get_saved_state_path(&self) -> PathBuf {
         let mut saved_state = self.path.join(".git").join(env!("CARGO_PKG_NAME"));
         saved_state.set_extension("lock");
