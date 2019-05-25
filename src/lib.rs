@@ -298,8 +298,8 @@ pub mod env;
 pub mod error;
 pub mod git;
 pub mod multi;
-pub mod tools;
 pub mod single;
+pub mod tools;
 
 use self::config::RepositorySavedState;
 pub use error::ErrorKind;

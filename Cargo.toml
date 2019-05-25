@@ -20,7 +20,7 @@ regex = "1"
 lazy_static = "1"
 toml = "0.5"
 structopt = "0.2"
-hg-parser = "0.1"
+hg-parser = "0.2"
 ordered-parallel-iterator = "0.1"
 indicatif = "0.11"
 

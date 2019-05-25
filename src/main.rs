@@ -37,7 +37,9 @@ fn main() {
             limit_high,
             common,
         } => {
-            common.log.as_ref().map(setup_logger);
+            if let Some(log) = common.log.as_ref() {
+                setup_logger(log)
+            }
 
             let env = load_environment(&common);
 
@@ -88,7 +90,9 @@ fn main() {
             }
         }
         Multi { config, common } => {
-            common.log.as_ref().map(setup_logger);
+            if let Some(log) = common.log.as_ref() {
+                setup_logger(log)
+            }
 
             let env = load_environment(&common);
 
