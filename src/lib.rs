@@ -35,7 +35,7 @@ cargo install --path .
 
 ```bash
 $ hg-git-fast-import --help
-hg-git-fast-import 1.1.0
+hg-git-fast-import 1.2.0
 Alexander Korolev <kilork@yandex.ru>
 A utility to import single and multiple Mercurial repositories to Git.
 
@@ -47,16 +47,17 @@ FLAGS:
     -V, --version    Prints version information
 
 SUBCOMMANDS:
-    help      Prints this message or the help of the given subcommand(s)
-    multi     Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
-    single    Exports single Mercurial repository to Git fast-import compatible format
+    build-marks    Rebuilds saved state of repo
+    help           Prints this message or the help of the given subcommand(s)
+    multi          Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
+    single         Exports single Mercurial repository to Git fast-import compatible format
 ```
 
 Import of single repository:
 
 ```bash
 $ hg-git-fast-import single --help
-hg-git-fast-import-single 1.1.0
+hg-git-fast-import-single 1.2.0
 Alexander Korolev <kilork@yandex.ru>
 Exports single Mercurial repository to Git fast-import compatible format
 
@@ -93,7 +94,7 @@ Import of multiple repositories:
 
 ```bash
 $ hg-git-fast-import multi --help
-hg-git-fast-import-multi 1.1.0
+hg-git-fast-import-multi 1.2.0
 Alexander Korolev <kilork@yandex.ru>
 Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
 
@@ -118,6 +119,31 @@ OPTIONS:
         --git-active-branches <git-active-branches>    Git maximum number of branches to maintain active at once.
         --log <log>
             Log file. If present - additional log info would be printed to this file.
+```
+
+Rebuild saved state of repo:
+
+```bash
+$ hg-git-fast-import build-marks --help
+hg-git-fast-import-build-marks 1.2.0
+Alexander Korolev <kilork@yandex.ru>
+Rebuilds saved state of repo
+
+USAGE:
+    hg-git-fast-import build-marks [FLAGS] [OPTIONS] <hg_repo> <git_repo>
+
+FLAGS:
+    -h, --help         Prints help information
+        --no-backup    Do not backup old marks.
+    -V, --version      Prints version information
+
+OPTIONS:
+    -a, --authors <authors>    Authors remapping in toml format.
+    -o, --offset <offset>      Offset for git fast-import marks in Git repository. Optional, default is 0.
+
+ARGS:
+    <hg_repo>     The Mercurial repo which was imported to git.
+    <git_repo>    The Git repo to save state to. Existing saved state would be updated with actual state.
 ```
 
 ## Configuration syntax
@@ -273,6 +299,7 @@ HG_GIT_FAST_IMPORT_VOLUME=~/sandbox:/sandbox ./run.sh single /sandbox/source_hg 
  */
 
 use lazy_static::lazy_static;
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::ops::Range;
 use std::process::Command;
@@ -314,6 +341,14 @@ pub fn read_file(filename: impl AsRef<Path>) -> io::Result<String> {
     let mut buf = String::new();
     file.read_to_string(&mut buf)?;
     Ok(buf)
+}
+
+fn to_str(bytes: &[u8]) -> Cow<'_, str> {
+    String::from_utf8_lossy(bytes)
+}
+
+fn to_string(bytes: &[u8]) -> String {
+    to_str(bytes).into()
 }
 
 #[derive(Debug)]

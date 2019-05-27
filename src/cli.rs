@@ -30,7 +30,7 @@ pub enum Cli {
         #[structopt(flatten)]
         common: Common,
     },
-    /// Rebuilds saved state of repo in case of 'git gc' run or other reasons
+    /// Rebuilds saved state of repo
     #[structopt(name = "build-marks")]
     BuildMarks {
         #[structopt(flatten)]
@@ -53,15 +53,18 @@ pub struct BuildMarksArgs {
     /// Authors remapping in toml format.
     #[structopt(parse(from_os_str), long, short)]
     pub authors: Option<PathBuf>,
-    /// The Mercurial repo which was imported to git
+    /// The Mercurial repo which was imported to git.
     #[structopt(parse(from_os_str))]
     pub hg_repo: PathBuf,
     /// The Git repo to save state to. Existing saved state would be updated with actual state.
     #[structopt(parse(from_os_str))]
     pub git_repo: PathBuf,
-    /// Offset for git fast-import marks in Git repository. Optional, default is 0
+    /// Offset for git fast-import marks in Git repository. Optional, default is 0.
     #[structopt(long, short)]
     pub offset: Option<usize>,
+    /// Do not backup old marks.
+    #[structopt(name = "no-backup", long)]
+    pub no_backup: bool,
 }
 
 #[derive(Debug, StructOpt)]

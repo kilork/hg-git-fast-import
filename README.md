@@ -28,86 +28,118 @@ From source:
 
 **hg-git-fast-import** is a command-line utility, usage info can be access with --help argument:
 
-    $ hg-git-fast-import --help
-    hg-git-fast-import 1.1.0
-    Alexander Korolev <kilork@yandex.ru>
-    A utility to import single and multiple Mercurial repositories to Git.
+```bash
+$ hg-git-fast-import --help
+hg-git-fast-import 1.2.0
+Alexander Korolev <kilork@yandex.ru>
+A utility to import single and multiple Mercurial repositories to Git.
 
-    USAGE:
-        hg-git-fast-import <SUBCOMMAND>
+USAGE:
+    hg-git-fast-import <SUBCOMMAND>
 
-    FLAGS:
-        -h, --help       Prints help information
-        -V, --version    Prints version information
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
 
-    SUBCOMMANDS:
-        help      Prints this message or the help of the given subcommand(s)
-        multi     Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
-        single    Exports single Mercurial repository to Git fast-import compatible format
+SUBCOMMANDS:
+    build-marks    Rebuilds saved state of repo
+    help           Prints this message or the help of the given subcommand(s)
+    multi          Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
+    single         Exports single Mercurial repository to Git fast-import compatible format
+```
 
 Import of single repository:
 
-    $ hg-git-fast-import single --help
-    hg-git-fast-import-single 1.1.0
-    Alexander Korolev <kilork@yandex.ru>
-    Exports single Mercurial repository to Git fast-import compatible format
+```bash
+$ hg-git-fast-import single --help
+hg-git-fast-import-single 1.2.0
+Alexander Korolev <kilork@yandex.ru>
+Exports single Mercurial repository to Git fast-import compatible format
 
-    USAGE:
-        hg-git-fast-import single [FLAGS] [OPTIONS] <hg_repo> [git_repo]
+USAGE:
+    hg-git-fast-import single [FLAGS] [OPTIONS] <hg_repo> [git_repo]
 
-    FLAGS:
-            --clean                       Recreate Git repo before import if it exists.
-            --cron                        Produce minimal output only if new revisions loaded or error happened.
-            --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format).
-        -h, --help                        Prints help information
-            --no-clean-closed-branches    Do not clean closed Mercurial branches.
-            --source-pull                 Pull source Mercurial repository before import.
-            --target-pull                 Pull target Git repository before push.
-            --target-push                 Push target Git repository after successful import.
-        -V, --version                     Prints version information
-            --verify                      Compares resulting Git repo with Mercurial.
+FLAGS:
+        --clean                       Recreate Git repo before import if it exists.
+        --cron                        Produce minimal output only if new revisions loaded or error happened.
+        --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format).
+    -h, --help                        Prints help information
+        --no-clean-closed-branches    Do not clean closed Mercurial branches.
+        --source-pull                 Pull source Mercurial repository before import.
+        --target-pull                 Pull target Git repository before push.
+        --target-push                 Push target Git repository after successful import.
+    -V, --version                     Prints version information
+        --verify                      Compares resulting Git repo with Mercurial.
 
-    OPTIONS:
-        -a, --authors <authors>                            Authors remapping in toml format.
-        -c, --config <config>                              Repository configuration in toml format.
-            --git-active-branches <git-active-branches>    Git maximum number of branches to maintain active at once.
-            --limit-high <limit-high>                      Limit high revision to import.
-            --log <log>
-                Log file. If present - additional log info would be printed to this file.
+OPTIONS:
+    -a, --authors <authors>                            Authors remapping in toml format.
+    -c, --config <config>                              Repository configuration in toml format.
+        --git-active-branches <git-active-branches>    Git maximum number of branches to maintain active at once.
+        --limit-high <limit-high>                      Limit high revision to import.
+        --log <log>
+            Log file. If present - additional log info would be printed to this file.
 
 
-    ARGS:
-        <hg_repo>     The Mercurial repo for import to git
-        <git_repo>    The Git repo to import to. Creates repo if it does not exist. Otherwise saved state must exist.
+ARGS:
+    <hg_repo>     The Mercurial repo for import to git
+    <git_repo>    The Git repo to import to. Creates repo if it does not exist. Otherwise saved state must exist.
+```
 
 Import of multiple repositories:
 
-    $ hg-git-fast-import multi --help
-    hg-git-fast-import-multi 1.1.0
-    Alexander Korolev <kilork@yandex.ru>
-    Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
+```bash
+$ hg-git-fast-import multi --help
+hg-git-fast-import-multi 1.2.0
+Alexander Korolev <kilork@yandex.ru>
+Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
 
-    USAGE:
-        hg-git-fast-import multi [FLAGS] [OPTIONS] --config <config>
+USAGE:
+    hg-git-fast-import multi [FLAGS] [OPTIONS] --config <config>
 
-    FLAGS:
-            --clean                       Recreate Git repo before import if it exists.
-            --cron                        Produce minimal output only if new revisions loaded or error happened.
-            --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format).
-        -h, --help                        Prints help information
-            --no-clean-closed-branches    Do not clean closed Mercurial branches.
-            --source-pull                 Pull source Mercurial repository before import.
-            --target-pull                 Pull target Git repository before push.
-            --target-push                 Push target Git repository after successful import.
-        -V, --version                     Prints version information
-            --verify                      Compares resulting Git repo with Mercurial.
+FLAGS:
+        --clean                       Recreate Git repo before import if it exists.
+        --cron                        Produce minimal output only if new revisions loaded or error happened.
+        --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format).
+    -h, --help                        Prints help information
+        --no-clean-closed-branches    Do not clean closed Mercurial branches.
+        --source-pull                 Pull source Mercurial repository before import.
+        --target-pull                 Pull target Git repository before push.
+        --target-push                 Push target Git repository after successful import.
+    -V, --version                     Prints version information
+        --verify                      Compares resulting Git repo with Mercurial.
 
-    OPTIONS:
-        -a, --authors <authors>                            Authors remapping in toml format.
-        -c, --config <config>                              Repositories configuration in toml format.
-            --git-active-branches <git-active-branches>    Git maximum number of branches to maintain active at once.
-            --log <log>
-                Log file. If present - additional log info would be printed to this file.
+OPTIONS:
+    -a, --authors <authors>                            Authors remapping in toml format.
+    -c, --config <config>                              Repositories configuration in toml format.
+        --git-active-branches <git-active-branches>    Git maximum number of branches to maintain active at once.
+        --log <log>
+            Log file. If present - additional log info would be printed to this file.
+```
+
+Rebuild saved state of repo:
+
+```bash
+$ hg-git-fast-import build-marks --help
+hg-git-fast-import-build-marks 1.2.0
+Alexander Korolev <kilork@yandex.ru>
+Rebuilds saved state of repo
+
+USAGE:
+    hg-git-fast-import build-marks [FLAGS] [OPTIONS] <hg_repo> <git_repo>
+
+FLAGS:
+    -h, --help         Prints help information
+        --no-backup    Do not backup old marks.
+    -V, --version      Prints version information
+
+OPTIONS:
+    -a, --authors <authors>    Authors remapping in toml format.
+    -o, --offset <offset>      Offset for git fast-import marks in Git repository. Optional, default is 0.
+
+ARGS:
+    <hg_repo>     The Mercurial repo which was imported to git.
+    <git_repo>    The Git repo to save state to. Existing saved state would be updated with actual state.
+```
 
 ## Configuration syntax
 

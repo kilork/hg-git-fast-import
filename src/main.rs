@@ -122,6 +122,7 @@ fn main() {
                 args.hg_repo,
                 args.git_repo,
                 args.offset,
+                !args.no_backup,
             )
             .unwrap();
         }
