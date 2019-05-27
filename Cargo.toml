@@ -1,6 +1,6 @@
 [package]
 name = "hg-git-fast-import"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["Alexander Korolev <kilork@yandex.ru>"]
 license = "Unlicense OR MIT"
 description = """

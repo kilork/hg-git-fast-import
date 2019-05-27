@@ -80,6 +80,7 @@ impl<'a> GitTargetRepository<'a> {
 
         info!("Configure Git repo");
         self.git_config("core.ignoreCase", "false")?;
+        self.git_config("gc.auto", "0")?;
 
         info!("New Git repo initialization done");
 
