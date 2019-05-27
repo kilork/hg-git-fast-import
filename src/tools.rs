@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
 
 use crate::error::ErrorKind;
@@ -17,15 +18,24 @@ struct RevisionHeader {
     date: usize,
 }
 
-fn load_git_revlog_lines(stdout: &[u8]) -> HashMap<RevisionHeader, String> {
+fn to_str(bytes: &[u8]) -> Cow<'_, str> {
+    String::from_utf8_lossy(bytes)
+}
+
+fn to_string(bytes: &[u8]) -> String {
+    to_str(bytes).into()
+}
+
+fn load_git_revlog_lines(stdout: &[u8]) -> HashMap<RevisionHeader, Vec<String>> {
     let mut lines = stdout.split(|&x| x == b'\n');
-    let mut result = HashMap::new();
+    let mut result: HashMap<RevisionHeader, Vec<String>> = HashMap::new();
     while let (Some(sha1), Some(date), Some(user)) = (lines.next(), lines.next(), lines.next()) {
         let revision_header = RevisionHeader {
-            user: String::from_utf8_lossy(&user).into(),
-            date: String::from_utf8_lossy(&date).parse().unwrap(),
+            user: to_string(&user),
+            date: to_str(&date).parse().unwrap(),
         };
-        result.insert(revision_header, String::from_utf8_lossy(&sha1).into());
+        let sha1s = result.entry(revision_header).or_default();
+        sha1s.push(to_string(&sha1));
     }
     result
 }
@@ -54,7 +64,7 @@ pub fn build_marks<P: AsRef<Path>, S: ::std::hash::BuildHasher>(
         )));
     }
 
-    let git_repo_mapping = load_git_revlog_lines(&git_output.stdout);
+    let mut git_repo_mapping = load_git_revlog_lines(&git_output.stdout);
 
     let hg_repo = MercurialRepository::open(hg_repo)?;
 
@@ -74,7 +84,7 @@ pub fn build_marks<P: AsRef<Path>, S: ::std::hash::BuildHasher>(
     let authors = authors.as_ref();
     let offset = offset.unwrap_or_default() + 1;
     for (index, rev) in hg_repo.header_iter().enumerate() {
-        let user: String = String::from_utf8_lossy(&rev.user).into();
+        let user = to_string(&rev.user);
         let user = authors
             .and_then(|authors| authors.get(&user))
             .cloned()
@@ -82,16 +92,41 @@ pub fn build_marks<P: AsRef<Path>, S: ::std::hash::BuildHasher>(
         let date = rev.time.timestamp_secs() as usize;
         let revision_header = RevisionHeader { user, date };
         let revision_mark = index + offset;
-        if let Some(sha1) = git_repo_mapping.get(&revision_header).cloned() {
-            if let Some(old_sha1) = marks.get(&revision_mark).cloned() {
-                if old_sha1 != sha1 {
-                    eprintln!("{}: set {} from {} to {}", index, revision_mark, old_sha1, sha1);
-                    marks.insert(revision_mark, sha1);
+        let mut mapped_sha1_list = git_repo_mapping.get_mut(&revision_header);
+        if let Some(mut sha1s) = mapped_sha1_list {
+            //if sha1s.len() == 1 {
+                sha1s.remove(0);
+                let sha1 = sha1s.iter().next().cloned().unwrap();
+                if let Some(old_sha1) = marks.get(&revision_mark).cloned() {
+                    if old_sha1 != sha1 {
+                        eprintln!(
+                            "{}: set {} from {} to {}",
+                            index, revision_mark, old_sha1, sha1
+                        );
+                        marks.insert(revision_mark, sha1);
+                    }
+                } else {
+                    marks.insert(revision_mark, sha1.clone());
                 }
-            } else {
-                marks.insert(revision_mark, sha1.clone());
-            }
-        } else if marks.get(&revision_mark).is_none() {
+            /*} else {
+                eprintln!("Found multiple ({}) sha1s for {}", sha1s.len(), revision_mark);
+                for sha1 in sha1s {
+                    let mut git_cmd = git_repo.git_cmd(&[
+                        "show",
+                        "-s",
+                        "--format=%B.",
+                        &sha1
+                    ]);
+                    let git_output = git_cmd.output()?;
+                    if !git_output.status.success() {
+                        return Err(ErrorKind::Target(TargetRepositoryError::GitFailure(
+                            git_output.status,
+                        )));
+                    }
+                    eprintln!("{}:{}", sha1, String::from_utf8_lossy(&git_output.stdout).trim_end());
+                }
+            }*/
+        } else if mapped_sha1_list.is_none() {
             eprintln!(
                 "Cannot find {} {} {}",
                 index, revision_header.user, revision_header.date,
