@@ -35,7 +35,7 @@ cargo install --path .
 
 ```bash
 $ hg-git-fast-import --help
-hg-git-fast-import 1.2.3
+hg-git-fast-import 1.2.4
 Alexander Korolev <kilork@yandex.ru>
 A utility to import single and multiple Mercurial repositories to Git.
 
@@ -57,7 +57,7 @@ Import of single repository:
 
 ```bash
 $ hg-git-fast-import single --help
-hg-git-fast-import-single 1.2.3
+hg-git-fast-import-single 1.2.4
 Alexander Korolev <kilork@yandex.ru>
 Exports single Mercurial repository to Git fast-import compatible format
 
@@ -94,7 +94,7 @@ Import of multiple repositories:
 
 ```bash
 $ hg-git-fast-import multi --help
-hg-git-fast-import-multi 1.2.3
+hg-git-fast-import-multi 1.2.4
 Alexander Korolev <kilork@yandex.ru>
 Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
 
@@ -125,7 +125,7 @@ Rebuild saved state of repo:
 
 ```bash
 $ hg-git-fast-import build-marks --help
-hg-git-fast-import-build-marks 1.2.3
+hg-git-fast-import-build-marks 1.2.4
 Alexander Korolev <kilork@yandex.ru>
 Rebuilds saved state of repo
 
@@ -374,7 +374,7 @@ pub trait TargetRepository {
     fn start_import(
         &mut self,
         git_active_branches: Option<usize>,
-    ) -> Result<(&mut Write, Option<config::RepositorySavedState>), TargetRepositoryError>;
+    ) -> Result<(&mut dyn Write, Option<config::RepositorySavedState>), TargetRepositoryError>;
 
     fn finish(&mut self) -> Result<(), TargetRepositoryError>;
 
@@ -524,7 +524,7 @@ impl<'a> MercurialRepo<'a> {
         changeset: &mut Changeset,
         count: usize,
         brmap: &mut HashMap<String, String>,
-        output: &mut Write,
+        output: &mut dyn Write,
     ) -> Result<usize, ErrorKind> {
         let header = &changeset.header;
 
@@ -641,7 +641,7 @@ impl<'a> MercurialRepo<'a> {
         &self,
         range: Range<usize>,
         mut count: usize,
-        output: &mut Write,
+        output: &mut dyn Write,
     ) -> Result<usize, ErrorKind> {
         info!("Exporting tags");
         for (revision, tag) in self
@@ -681,7 +681,7 @@ fn sanitize_branchname(name: &str, prefix: Option<&String>, fix_branch_name: boo
     }
     while let Some(&c) = chars.peek() {
         let c = match c {
-            '\0'...' ' | '~' | '^' | ':' | '\\' => '-',
+            '\0'..=' ' | '~' | '^' | ':' | '\\' => '-',
             '.' if last == Some('.') || last == None => '-',
             c => c,
         };

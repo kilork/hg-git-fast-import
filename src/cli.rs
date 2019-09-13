@@ -39,11 +39,11 @@ pub enum Cli {
     /// Generates completion scripts for your shell
     #[structopt(
         name = "completions",
-        raw(setting = "structopt::clap::AppSettings::Hidden")
+        setting = structopt::clap::AppSettings::Hidden
     )]
     Completions {
         /// The shell to generate the script for
-        #[structopt(raw(possible_values = r#"&["bash", "fish", "zsh"]"#))]
+        #[structopt(possible_values = &["bash", "fish", "zsh"])]
         shell: structopt::clap::Shell,
     },
 }

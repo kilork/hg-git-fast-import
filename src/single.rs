@@ -13,7 +13,7 @@ pub fn hg2git<P: AsRef<Path>>(
     repourl: P,
     verify: bool,
     git_active_branches: Option<usize>,
-    target: &mut TargetRepository,
+    target: &mut dyn TargetRepository,
     env: &env::Environment,
     repository_config: &config::RepositoryConfig,
 ) -> Result<(), ErrorKind> {

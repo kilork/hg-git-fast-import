@@ -27,7 +27,7 @@ impl<'a> TargetRepository for StdoutTargetRepository<'a> {
     fn start_import(
         &mut self,
         _git_active_branches: Option<usize>,
-    ) -> Result<(&mut Write, Option<RepositorySavedState>), TargetRepositoryError> {
+    ) -> Result<(&mut dyn Write, Option<RepositorySavedState>), TargetRepositoryError> {
         Ok((&mut self.stdoutlock, None))
     }
     fn finish(&mut self) -> Result<(), TargetRepositoryError> {
@@ -134,7 +134,7 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
     fn start_import(
         &mut self,
         git_active_branches: Option<usize>,
-    ) -> Result<(&mut Write, Option<RepositorySavedState>), TargetRepositoryError> {
+    ) -> Result<(&mut dyn Write, Option<RepositorySavedState>), TargetRepositoryError> {
         let path = &self.path;
         let saved_state;
         info!("Checking Git repo: {}", path.to_str().unwrap());
