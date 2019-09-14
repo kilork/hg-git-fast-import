@@ -598,7 +598,7 @@ impl<'a> MercurialRepo<'a> {
             );
         }
 
-        let prefix = strip_leading_slash(self.config.path_prefix.as_ref(), &"".into());
+        let prefix = strip_leading_slash(self.config.path_prefix.as_ref(), "");
         for file in &mut changeset.files {
             match (&mut file.data, &mut file.manifest_entry) {
                 (None, None) => {
@@ -660,7 +660,7 @@ impl<'a> MercurialRepo<'a> {
     }
 }
 
-fn strip_leading_slash(prefix: Option<&String>, x: &String) -> String {
+fn strip_leading_slash(prefix: Option<&String>, x: &str) -> String {
     prefix.map_or_else(|| x.to_string(), |p| format!("{}/{}", p, x))
 }
 
