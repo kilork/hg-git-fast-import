@@ -1,10 +1,18 @@
-#[derive(Debug)]
+use failure::Fail;
+
+#[derive(Fail, Debug)]
 pub enum ErrorKind {
+    #[fail(display = "lib parser {}", _0)]
     HgParserFailure(hg_parser::ErrorKind),
+    #[fail(display = "source error {}", _0)]
     Source(crate::SourceRepositoryError),
+    #[fail(display = "target error {}", _0)]
     Target(crate::TargetRepositoryError),
+    #[fail(display = "encoding error {}", _0)]
     Encoding(std::str::Utf8Error),
+    #[fail(display = "io error {}", _0)]
     IO(std::io::Error),
+    #[fail(display = "verify error {}", _0)]
     VerifyFailure(String),
 }
 

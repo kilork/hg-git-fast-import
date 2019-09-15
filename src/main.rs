@@ -4,6 +4,8 @@ use std::io;
 use std::path::Path;
 use std::time::Instant;
 
+use exitfailure::ExitFailure;
+use failure::{self, ResultExt};
 use indicatif::HumanDuration;
 use log::info;
 use simplelog::{Config, LevelFilter, WriteLogger};
@@ -22,7 +24,7 @@ use self::cli::{
     Common,
 };
 
-fn main() {
+fn main() -> Result<(), ExitFailure> {
     let start_time = Instant::now();
 
     let cli = Cli::from_args();
@@ -41,18 +43,24 @@ fn main() {
                 setup_logger(log)
             }
 
-            let env = load_environment(&common);
+            let env = load_environment(&common)?;
 
-            let repository_config = config.map_or_else(RepositoryConfig::default, |x| {
-                info!("Loading config");
-                let config_str = read_file(&x).unwrap();
-                let mut config: RepositoryConfig = toml::from_str(&config_str).unwrap();
-                info!("Config loaded");
-                if limit_high.is_some() {
-                    config.limit_high = limit_high;
-                }
-                config
-            });
+            let repository_config: Result<RepositoryConfig, failure::Error> = config.map_or_else(
+                || Ok(RepositoryConfig::default()),
+                |x| {
+                    info!("Loading config");
+                    let config_str = read_file(&x)
+                        .with_context(|_| format!("Cannot read config {:?}", x))?;
+                    let mut config: RepositoryConfig = toml::from_str(&config_str)
+                        .with_context(|_| format!("Cannot parse config {:?}", x))?;
+                    info!("Config loaded");
+                    if limit_high.is_some() {
+                        config.limit_high = limit_high;
+                    }
+                    Ok(config)
+                },
+            );
+            let repository_config = repository_config?;
             if let Some(git_repo) = git_repo {
                 let mut git_target_repository = GitTargetRepository::open(git_repo);
 
@@ -65,8 +73,7 @@ fn main() {
                     &mut git_target_repository,
                     &env,
                     &repository_config,
-                )
-                .unwrap();
+                )?;
             } else {
                 let stdout = std::io::stdout();
                 let stdoutlock = stdout.lock();
@@ -78,8 +85,7 @@ fn main() {
                     &mut stdout_target,
                     &env,
                     &repository_config,
-                )
-                .unwrap();
+                )?;
             }
             info!("Import done");
             if !common.cron {
@@ -94,11 +100,13 @@ fn main() {
                 setup_logger(log)
             }
 
-            let env = load_environment(&common);
+            let env = load_environment(&common)?;
 
             info!("Loading config");
-            let config_str = read_file(&config).unwrap();
-            let multi_config = toml::from_str(&config_str).unwrap();
+            let config_str =
+                read_file(&config).with_context(|_| format!("Cannot read config {:?}", config))?;
+            let multi_config = toml::from_str(&config_str)
+                .with_context(|_| format!("Cannot parse config from toml {:?}", config))?;
             info!("Config loaded");
             multi2git(
                 common.verify,
@@ -106,8 +114,7 @@ fn main() {
                 &env,
                 &config,
                 &multi_config,
-            )
-            .unwrap();
+            )?;
             info!("Import done");
             if !common.cron {
                 eprintln!(
@@ -118,15 +125,16 @@ fn main() {
         }
         BuildMarks { args } => {
             build_marks(
-                args.authors.as_ref().map(load_authors),
+                args.authors.as_ref().map(load_authors).transpose()?,
                 args.hg_repo,
                 args.git_repo,
                 args.offset,
                 !args.no_backup,
-            )
-            .unwrap();
+            )?;
         }
     }
+
+    Ok(())
 }
 
 fn setup_logger(log: impl AsRef<Path>) {
@@ -138,23 +146,25 @@ fn setup_logger(log: impl AsRef<Path>) {
     .unwrap();
 }
 
-fn load_environment(common: &Common) -> Environment {
-    Environment {
+fn load_environment(common: &Common) -> Result<Environment, failure::Error> {
+    Ok(Environment {
         no_clean_closed_branches: common.no_clean_closed_branches,
-        authors: common.authors.as_ref().map(load_authors),
+        authors: common.authors.as_ref().map(load_authors).transpose()?,
         clean: common.clean,
         cron: common.cron,
         target_push: common.target_push,
         target_pull: common.target_pull,
         source_pull: common.source_pull,
         fix_wrong_branchname: common.fix_wrong_branchname,
-    }
+    })
 }
 
-fn load_authors(p: impl AsRef<Path>) -> HashMap<String, String> {
+fn load_authors(p: impl AsRef<Path>) -> Result<HashMap<String, String>, failure::Error> {
     info!("Loading authors");
-    let authors_str = read_file(p).unwrap();
-    let authors = toml::from_str(&authors_str).unwrap();
+    let authors_str =
+        read_file(&p).with_context(|_| format!("Cannot load authors {:?}", p.as_ref()))?;
+    let authors = toml::from_str(&authors_str)
+        .with_context(|_| format!("Cannot parse authors from toml {:?}", p.as_ref()))?;
     info!("Authors list loaded");
-    authors
+    Ok(authors)
 }

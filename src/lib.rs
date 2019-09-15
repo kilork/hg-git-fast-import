@@ -35,7 +35,7 @@ cargo install --path .
 
 ```bash
 $ hg-git-fast-import --help
-hg-git-fast-import 1.2.4
+hg-git-fast-import 1.2.5
 Alexander Korolev <kilork@yandex.ru>
 A utility to import single and multiple Mercurial repositories to Git.
 
@@ -57,7 +57,7 @@ Import of single repository:
 
 ```bash
 $ hg-git-fast-import single --help
-hg-git-fast-import-single 1.2.4
+hg-git-fast-import-single 1.2.5
 Alexander Korolev <kilork@yandex.ru>
 Exports single Mercurial repository to Git fast-import compatible format
 
@@ -94,7 +94,7 @@ Import of multiple repositories:
 
 ```bash
 $ hg-git-fast-import multi --help
-hg-git-fast-import-multi 1.2.4
+hg-git-fast-import-multi 1.2.5
 Alexander Korolev <kilork@yandex.ru>
 Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
 
@@ -125,7 +125,7 @@ Rebuild saved state of repo:
 
 ```bash
 $ hg-git-fast-import build-marks --help
-hg-git-fast-import-build-marks 1.2.4
+hg-git-fast-import-build-marks 1.2.5
 Alexander Korolev <kilork@yandex.ru>
 Rebuilds saved state of repo
 
@@ -320,6 +320,8 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::process::ExitStatus;
 
+use failure::Fail;
+
 pub mod config;
 pub mod env;
 pub mod error;
@@ -351,16 +353,25 @@ fn to_string(bytes: &[u8]) -> String {
     to_str(bytes).into()
 }
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum TargetRepositoryError {
+    #[fail(display = "unknown")]
     Nope,
+    #[fail(display = "is not a directory")]
     IsNotDir,
+    #[fail(display = "saved state does not exist")]
     SavedStateDoesNotExist,
+    #[fail(display = "cannot init repository {}", _0)]
     CannotInitRepo(ExitStatus),
+    #[fail(display = "cannot configure repository {}", _0)]
     CannotConfigRepo(ExitStatus),
+    #[fail(display = "import failed {}", _0)]
     ImportFailed(ExitStatus),
+    #[fail(display = "git failure {}", _0)]
     GitFailure(ExitStatus),
+    #[fail(display = "io error {}", _0)]
     IOError(std::io::Error),
+    #[fail(display = "verification failed")]
     VerifyFail,
 }
 
@@ -415,8 +426,9 @@ pub trait TargetRepository {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum SourceRepositoryError {
+    #[fail(display = "pull fail {}", _0)]
     PullFail(String),
 }
 

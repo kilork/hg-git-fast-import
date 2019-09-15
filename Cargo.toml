@@ -1,6 +1,6 @@
 [package]
 name = "hg-git-fast-import"
-version = "1.2.4"
+version = "1.2.5"
 authors = ["Alexander Korolev <kilork@yandex.ru>"]
 license = "Unlicense OR MIT"
 description = """
@@ -20,10 +20,12 @@ regex = "1"
 lazy_static = "1"
 toml = "0.5"
 structopt = "0.3"
-hg-parser = "0.2"
+hg-parser = "0.3"
 ordered-parallel-iterator = "0.1"
 indicatif = "0.12"
 dialoguer = "0.4"
+failure = "0.1"
+exitfailure = "0.5"
 
 [dependencies.serde]
 version = "1.0"
@@ -34,3 +36,4 @@ pretty_assertions = "0.6"
 
 [profile.release]
 lto = true
+incremental = true
