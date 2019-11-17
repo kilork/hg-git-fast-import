@@ -49,8 +49,8 @@ fn main() -> Result<(), ExitFailure> {
                 || Ok(RepositoryConfig::default()),
                 |x| {
                     info!("Loading config");
-                    let config_str = read_file(&x)
-                        .with_context(|_| format!("Cannot read config {:?}", x))?;
+                    let config_str =
+                        read_file(&x).with_context(|_| format!("Cannot read config {:?}", x))?;
                     let mut config: RepositoryConfig = toml::from_str(&config_str)
                         .with_context(|_| format!("Cannot parse config {:?}", x))?;
                     info!("Config loaded");
