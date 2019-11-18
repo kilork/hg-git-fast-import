@@ -367,8 +367,8 @@ pub enum TargetRepositoryError {
     CannotConfigRepo(ExitStatus),
     #[fail(display = "import failed {}", _0)]
     ImportFailed(ExitStatus),
-    #[fail(display = "git failure {}", _0)]
-    GitFailure(ExitStatus),
+    #[fail(display = "git failure {}: {}", _0, _1)]
+    GitFailure(ExitStatus, String),
     #[fail(display = "io error {}", _0)]
     IOError(std::io::Error),
     #[fail(display = "verification failed")]

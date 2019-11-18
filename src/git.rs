@@ -211,17 +211,26 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
             info!("Resetting Git repo.");
             self.git(&["reset", "--hard"], cron)
         } else {
-            panic!("Cannot checkout HEAD revision in Git repo.")
+            return Err(TargetRepositoryError::GitFailure(
+                status,
+                "Cannot checkout HEAD revision in Git repo.".into(),
+            ));
         };
 
         let status = if status.success() {
             info!("Cleanup Git repo");
             self.git(&["clean", "-d", "-x", "-f"], cron)
         } else {
-            panic!("Cannot reset Git repo.")
+            return Err(TargetRepositoryError::GitFailure(
+                status,
+                "Cannot reset Git repo.".into(),
+            ));
         };
         if !status.success() {
-            panic!("Cannot cleanup Git repo.");
+            return Err(TargetRepositoryError::GitFailure(
+                status,
+                "Cannot cleanup Git repo.".into(),
+            ));
         };
 
         let (target_push, target_pull) = self
@@ -240,10 +249,16 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
             let status = if status.success() {
                 self.git(&["push", "--tags"], cron)
             } else {
-                panic!("Cannot push all to Git repo.");
+                return Err(TargetRepositoryError::GitFailure(
+                    status,
+                    "Cannot push all to Git repo.".into(),
+                ));
             };
             if !status.success() {
-                panic!("Cannot push all tags to Git repo.");
+                return Err(TargetRepositoryError::GitFailure(
+                    status,
+                    "Cannot push all tags to Git repo.".into(),
+                ));
             };
         }
 

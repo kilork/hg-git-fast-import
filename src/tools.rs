@@ -41,6 +41,7 @@ pub fn build_marks<P: AsRef<Path>, S: ::std::hash::BuildHasher>(
     if !git_output.status.success() {
         return Err(ErrorKind::Target(TargetRepositoryError::GitFailure(
             git_output.status,
+            "git log failed".into(),
         )));
     }
 
@@ -245,6 +246,7 @@ fn find_matching_sha1_index(
         if !git_output.status.success() {
             return Err(ErrorKind::Target(TargetRepositoryError::GitFailure(
                 git_output.status,
+                "git show failed".into(),
             )));
         }
 
