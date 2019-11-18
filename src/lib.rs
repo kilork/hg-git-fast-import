@@ -494,16 +494,16 @@ impl<'a> MercurialRepo<'a> {
         Ok(self.inner.last_rev().0 as usize)
     }
 
-    fn fixup_user(&self, user: &str) -> String {
+    fn fixup_user(&self, user: &str) -> Result<String, ErrorKind> {
         if let Some(ref authors) = self.config.authors {
-            if let Some(remap) = authors.get(user) {
-                return remap.clone();
+            if let Some(remap) = authors.get(user).cloned() {
+                return Ok(remap);
             }
         }
 
         if let Some(ref authors) = self.env.authors {
-            if let Some(remap) = authors.get(user) {
-                return remap.clone();
+            if let Some(remap) = authors.get(user).cloned() {
+                return Ok(remap);
             }
         }
 
@@ -517,10 +517,10 @@ impl<'a> MercurialRepo<'a> {
                 caps.get(2).unwrap().as_str(),
             )
         } else {
-            panic!("Wrong user: {}", user);
+            return Err(ErrorKind::WrongUser(user.to_string()));
         };
 
-        format!("{} {}", name, email)
+        Ok(format!("{} {}", name, email))
     }
 
     fn mark<R: Into<usize>>(&self, revision: R) -> usize {
@@ -540,7 +540,7 @@ impl<'a> MercurialRepo<'a> {
     ) -> Result<usize, ErrorKind> {
         let header = &changeset.header;
 
-        let user = self.fixup_user(std::str::from_utf8(&header.user)?);
+        let user = self.fixup_user(std::str::from_utf8(&header.user)?)?;
 
         let mut branch = None;
         let mut closed = false;
