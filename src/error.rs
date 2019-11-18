@@ -14,6 +14,21 @@ pub enum ErrorKind {
     IO(std::io::Error),
     #[fail(display = "verify error {}", _0)]
     VerifyFailure(String),
+    #[fail(
+        display = "wrong name of Mercurial user '{}'.
+Must be in form 'Username <username@email.xyz>'.
+Use --authors option to specify mapping file in TOML format.
+Or use [authors] section in config.
+
+Example:
+
+    '{}' = 'My <my@normal.xyz>'
+
+will replace Mercurial '{}' with 'My <my@normal.xyz>' in Git.
+",
+        _0, _0, _0
+    )]
+    WrongUser(String),
 }
 
 impl From<hg_parser::ErrorKind> for ErrorKind {
