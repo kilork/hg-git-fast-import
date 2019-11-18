@@ -635,7 +635,11 @@ impl<'a> MercurialRepo<'a> {
                     writeln!(output, "\ndata {}", data.len())?;
                     output.write_all(&data[..])?;
                 }
-                _ => panic!("Wrong file data!"),
+                _ => {
+                    return Err(ErrorKind::WrongFileData(
+                        String::from_utf8_lossy(&file.path).into(),
+                    ))
+                }
             }
         }
 

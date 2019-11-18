@@ -14,6 +14,8 @@ pub enum ErrorKind {
     IO(std::io::Error),
     #[fail(display = "verify error {}", _0)]
     VerifyFailure(String),
+    #[fail(display = "wrong file data {}", _0)]
+    WrongFileData(String),
     #[fail(
         display = "wrong name of Mercurial user '{}'.
 Must be in form 'Username <username@email.xyz>'.
