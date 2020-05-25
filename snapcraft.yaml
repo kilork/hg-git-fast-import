@@ -1,0 +1,26 @@
+name: hg-git-fast-import
+version: '1.3.1'
+summary: A utility to import single and multiple Mercurial repositories to Git
+description: |
+    Features:
+
+    1. Import of single and multiple Mercurial repositories to Git repository.
+    2. Import of new revisions from previously imported Mercurial repositories to Git repository.
+    3. Tags.
+    4. Closed branches.
+    5. Verification of the end result with diff.
+
+grade: stable
+confinement: strict
+base: core18
+
+parts:
+  hg-git-fast-import:
+    plugin: rust
+    source: https://github.com/kilork/hg-git-fast-import.git
+
+apps:
+  hg-git-fast-import:
+    command: bin/hg-git-fast-import
+    plugs:
+        - home
