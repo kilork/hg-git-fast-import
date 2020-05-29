@@ -335,7 +335,7 @@ dependencies = [
 
 [[package]]
 name = "hg-git-fast-import"
-version = "1.3.2"
+version = "1.3.3"
 dependencies = [
  "dialoguer 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "exitfailure 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",

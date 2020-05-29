@@ -1,13 +1,14 @@
 #!/bin/bash
 
-cargo update
-cargo test
-
 NEW=$1
 CURRENT=`rg -m1 -N version Cargo.toml | cut -d\" -f2`
 
 echo $CURRENT $NEW
 rpl "$CURRENT" "$NEW" Cargo.toml README.md src/lib.rs snapcraft.yaml
+
+cargo update
+cargo test
+
 git diff
 read -p "Commit changes? " -n 1 -r
 echo    # (optional) move to a new line
