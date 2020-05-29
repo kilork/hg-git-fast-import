@@ -1,5 +1,6 @@
 /target
 **/*.rs.bk
+*.snap
 test_run*
 /examples/private_*.rs
 callgrind.*
