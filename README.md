@@ -49,7 +49,7 @@ With Snap (*):
 
 ```bash
 $ hg-git-fast-import --help
-hg-git-fast-import 1.3.3
+hg-git-fast-import 1.3.4
 Alexander Korolev <kilork@yandex.ru>
 A utility to import single and multiple Mercurial repositories to Git.
 
@@ -71,7 +71,7 @@ Import of single repository:
 
 ```bash
 $ hg-git-fast-import single --help
-hg-git-fast-import-single 1.3.3
+hg-git-fast-import-single 1.3.4
 Alexander Korolev <kilork@yandex.ru>
 Exports single Mercurial repository to Git fast-import compatible format
 
@@ -108,7 +108,7 @@ Import of multiple repositories:
 
 ```bash
 $ hg-git-fast-import multi --help
-hg-git-fast-import-multi 1.3.3
+hg-git-fast-import-multi 1.3.4
 Alexander Korolev <kilork@yandex.ru>
 Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
 
@@ -139,7 +139,7 @@ Rebuild saved state of repo:
 
 ```bash
 $ hg-git-fast-import build-marks --help
-hg-git-fast-import-build-marks 1.3.3
+hg-git-fast-import-build-marks 1.3.4
 Alexander Korolev <kilork@yandex.ru>
 Rebuilds saved state of repo
 
