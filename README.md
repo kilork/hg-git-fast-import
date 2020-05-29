@@ -34,9 +34,11 @@ Prebuild release binaries:
 
 [Download latest release](https://github.com/kilork/hg-git-fast-import/releases)
 
-With Snap:
+With Snap (*):
 
-    sudo snap install hg-git-fast-import --classic
+    sudo snap install hg-git-fast-import
+
+(*) Limitations: Subprocesses are not allowed with strict snap package (hg and git), classic confinement is not requested at the moment, this means you can only export script which would be processed with git.
 
 [![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-black.svg)](https://snapcraft.io/hg-git-fast-import)
 

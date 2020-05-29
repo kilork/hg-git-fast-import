@@ -11,7 +11,7 @@ description: |
     5. Verification of the end result with diff.
 
 grade: stable
-confinement: classic
+confinement: strict
 base: core18
 
 parts:
