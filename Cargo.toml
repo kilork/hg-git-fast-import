@@ -1,6 +1,6 @@
 [package]
 name = "hg-git-fast-import"
-version = "1.3.4"
+version = "1.3.5"
 authors = ["Alexander Korolev <kilork@yandex.ru>"]
 license = "Unlicense OR MIT"
 description = """
@@ -13,6 +13,10 @@ keywords = ["cli", "hg", "git", "mercurial", "convert"]
 categories = ["command-line-utilities"]
 edition = "2018"
 
+[features]
+default = ["jemalloc"]
+jemalloc = ["jemallocator"]
+
 [dependencies]
 log = "0.4"
 simplelog = "0.8"
@@ -20,12 +24,14 @@ regex = "1"
 lazy_static = "1"
 toml = "0.5"
 structopt = "0.3"
-hg-parser = "0.3"
+hg-parser = "0.4"
 ordered-parallel-iterator = "0.1"
-indicatif = "0.14"
+indicatif = "0.15"
 dialoguer = "0.6"
 failure = "0.1"
 exitfailure = "0.5"
+
+jemallocator = { version = "0.3", optional = true }
 
 [dependencies.serde]
 version = "1.0"

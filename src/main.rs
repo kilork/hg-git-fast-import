@@ -1,3 +1,7 @@
+#[cfg(feature = "jemalloc")]
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io;
