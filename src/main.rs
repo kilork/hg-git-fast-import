@@ -3,16 +3,13 @@
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 use std::collections::HashMap;
-use std::fs::File;
 use std::io;
 use std::path::Path;
 use std::time::Instant;
 
-use exitfailure::ExitFailure;
-use failure::{self, ResultExt};
+use anyhow::{Context, Result};
 use indicatif::HumanDuration;
-use log::info;
-use simplelog::{Config, LevelFilter, WriteLogger};
+use tracing::info;
 
 use structopt::StructOpt;
 
@@ -20,6 +17,7 @@ use hg_git_fast_import::config::RepositoryConfig;
 use hg_git_fast_import::env::Environment;
 use hg_git_fast_import::git::{GitTargetRepository, StdoutTargetRepository};
 use hg_git_fast_import::{multi::multi2git, read_file, single::hg2git, tools::build_marks};
+use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
 
 mod cli;
 
@@ -28,7 +26,7 @@ use self::cli::{
     Common,
 };
 
-fn main() -> Result<(), ExitFailure> {
+fn main() -> Result<()> {
     let start_time = Instant::now();
 
     let cli = Cli::from_args();
@@ -43,20 +41,18 @@ fn main() -> Result<(), ExitFailure> {
             limit_high,
             common,
         } => {
-            if let Some(log) = common.log.as_ref() {
-                setup_logger(log)
-            }
+            setup_logger(common.log.as_ref())?;
 
             let env = load_environment(&common)?;
 
-            let repository_config: Result<RepositoryConfig, failure::Error> = config.map_or_else(
+            let repository_config: Result<RepositoryConfig, anyhow::Error> = config.map_or_else(
                 || Ok(RepositoryConfig::default()),
                 |x| {
                     info!("Loading config");
                     let config_str =
-                        read_file(&x).with_context(|_| format!("Cannot read config {:?}", x))?;
+                        read_file(&x).with_context(|| format!("Cannot read config {:?}", x))?;
                     let mut config: RepositoryConfig = toml::from_str(&config_str)
-                        .with_context(|_| format!("Cannot parse config {:?}", x))?;
+                        .with_context(|| format!("Cannot parse config {:?}", x))?;
                     info!("Config loaded");
                     if limit_high.is_some() {
                         config.limit_high = limit_high;
@@ -100,17 +96,15 @@ fn main() -> Result<(), ExitFailure> {
             }
         }
         Multi { config, common } => {
-            if let Some(log) = common.log.as_ref() {
-                setup_logger(log)
-            }
+            setup_logger(common.log.as_ref())?;
 
             let env = load_environment(&common)?;
 
             info!("Loading config");
             let config_str =
-                read_file(&config).with_context(|_| format!("Cannot read config {:?}", config))?;
+                read_file(&config).with_context(|| format!("Cannot read config {:?}", config))?;
             let multi_config = toml::from_str(&config_str)
-                .with_context(|_| format!("Cannot parse config from toml {:?}", config))?;
+                .with_context(|| format!("Cannot parse config from toml {:?}", config))?;
             info!("Config loaded");
             multi2git(
                 common.verify,
@@ -141,16 +135,31 @@ fn main() -> Result<(), ExitFailure> {
     Ok(())
 }
 
-fn setup_logger(log: impl AsRef<Path>) {
-    WriteLogger::init(
-        LevelFilter::Info,
-        Config::default(),
-        File::create(log).unwrap(),
-    )
-    .unwrap();
+fn setup_logger(log: Option<&impl AsRef<Path>>) -> Result<()> {
+    let (logging_backend, _logging_guard) = if let Some(log) = log.as_ref() {
+        setup_file_logger(log)?
+    } else {
+        setup_console_logger()?
+    };
+    tracing_subscriber::fmt()
+        .with_writer(logging_backend)
+        .init();
+
+    Ok(())
 }
 
-fn load_environment(common: &Common) -> Result<Environment, failure::Error> {
+fn setup_file_logger(log: impl AsRef<Path>) -> Result<(NonBlocking, WorkerGuard), anyhow::Error> {
+    let file_appender = std::fs::File::create(log.as_ref())?;
+    let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+    Ok((non_blocking, guard))
+}
+
+fn setup_console_logger() -> Result<(NonBlocking, WorkerGuard), anyhow::Error> {
+    let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
+    Ok((non_blocking, guard))
+}
+
+fn load_environment(common: &Common) -> Result<Environment, anyhow::Error> {
     Ok(Environment {
         no_clean_closed_branches: common.no_clean_closed_branches,
         authors: common.authors.as_ref().map(load_authors).transpose()?,
@@ -163,12 +172,12 @@ fn load_environment(common: &Common) -> Result<Environment, failure::Error> {
     })
 }
 
-fn load_authors(p: impl AsRef<Path>) -> Result<HashMap<String, String>, failure::Error> {
+fn load_authors(p: impl AsRef<Path>) -> Result<HashMap<String, String>, anyhow::Error> {
     info!("Loading authors");
     let authors_str =
-        read_file(&p).with_context(|_| format!("Cannot load authors {:?}", p.as_ref()))?;
+        read_file(&p).with_context(|| format!("Cannot load authors {:?}", p.as_ref()))?;
     let authors = toml::from_str(&authors_str)
-        .with_context(|_| format!("Cannot parse authors from toml {:?}", p.as_ref()))?;
+        .with_context(|| format!("Cannot parse authors from toml {:?}", p.as_ref()))?;
     info!("Authors list loaded");
     Ok(authors)
 }

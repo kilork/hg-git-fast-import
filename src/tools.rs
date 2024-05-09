@@ -210,16 +210,21 @@ fn select_from_matching(
         return Ok(Some(removed));
     }
 
-    let mut select = dialoguer::Select::new();
-    select.with_prompt(&format!(
-        "Select sha1 to set mark :{} (pos: {}) {} {}",
-        revision_mark, index, revision_header.user, revision_header.date
-    ));
-    for &index in &indexes {
-        let sha1 = &sha1s[index];
-        let new_index = revlog.iter().position(|x| x == sha1);
-        select.item(&format!("{} ({:?})", sha1, new_index));
-    }
+    let select = dialoguer::Select::new()
+        .with_prompt(&format!(
+            "Select sha1 to set mark :{} (pos: {}) {} {}",
+            revision_mark, index, revision_header.user, revision_header.date
+        ))
+        .items(
+            &indexes
+                .iter()
+                .map(|index| {
+                    let sha1 = &sha1s[*index];
+                    let new_index = revlog.iter().position(|x| x == sha1);
+                    format!("{} ({:?})", sha1, new_index)
+                })
+                .collect::<Vec<_>>(),
+        );
 
     let index_selected = select.interact_opt()?.map(|index| indexes[index]);
 

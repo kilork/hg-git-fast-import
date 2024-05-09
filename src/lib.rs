@@ -297,30 +297,24 @@ HG_GIT_FAST_IMPORT_VOLUME=~/sandbox:/sandbox ./run.sh single /sandbox/source_hg 
 ```
 
  */
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    fs::File,
+    io::{
+        self,
+        prelude::{Read, Write},
+    },
+    ops::Range,
+    path::{Path, PathBuf},
+    process::{Command, ExitStatus},
+};
 
 use lazy_static::lazy_static;
-use std::borrow::Cow;
-use std::collections::HashSet;
-use std::ops::Range;
-use std::process::Command;
-
-use log::{info, trace};
-
 use regex::Regex;
+use tracing::{info, trace};
 
 use ordered_parallel_iterator::OrderedParallelIterator;
-
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::{
-    self,
-    prelude::{Read, Write},
-};
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::ExitStatus;
-
-use failure::Fail;
 
 pub mod config;
 pub mod env;
@@ -353,25 +347,25 @@ fn to_string(bytes: &[u8]) -> String {
     to_str(bytes).into()
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum TargetRepositoryError {
-    #[fail(display = "unknown")]
+    #[error("unknown")]
     Nope,
-    #[fail(display = "is not a directory")]
+    #[error("is not a directory")]
     IsNotDir,
-    #[fail(display = "saved state does not exist")]
+    #[error("saved state does not exist")]
     SavedStateDoesNotExist,
-    #[fail(display = "cannot init repository {}", _0)]
+    #[error("cannot init repository {0}")]
     CannotInitRepo(ExitStatus),
-    #[fail(display = "cannot configure repository {}", _0)]
+    #[error("cannot configure repository {0}")]
     CannotConfigRepo(ExitStatus),
-    #[fail(display = "import failed {}", _0)]
+    #[error("import failed {0}")]
     ImportFailed(ExitStatus),
-    #[fail(display = "git failure {}: {}", _0, _1)]
+    #[error("git failure {0}: {1}")]
     GitFailure(ExitStatus, String),
-    #[fail(display = "io error {}", _0)]
+    #[error("io error {0}")]
     IOError(std::io::Error),
-    #[fail(display = "verification failed")]
+    #[error("verification failed")]
     VerifyFail,
 }
 
@@ -426,9 +420,9 @@ pub trait TargetRepository {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug, thiserror::Error)]
 pub enum SourceRepositoryError {
-    #[fail(display = "pull fail {}", _0)]
+    #[error("pull fail {0}")]
     PullFail(String),
 }
 

@@ -49,115 +49,28 @@ With Snap (*):
 
 ```bash
 $ hg-git-fast-import --help
-hg-git-fast-import 1.3.8
-
-USAGE:
-    hg-git-fast-import <SUBCOMMAND>
-
-FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-
-SUBCOMMANDS:
-    build-marks    Rebuilds saved state of repo
-    help           Prints this message or the help of the given subcommand(s)
-    multi          Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
-    single         Exports single Mercurial repository to Git fast-import compatible format
-
+{{ exec "hg-git-fast-import --help" }}
 ```
 
 Import of single repository:
 
 ```bash
 $ hg-git-fast-import single --help
-hg-git-fast-import-single 1.3.8
-Exports single Mercurial repository to Git fast-import compatible format
-
-USAGE:
-    hg-git-fast-import single [FLAGS] [OPTIONS] <hg-repo> [git-repo]
-
-FLAGS:
-        --clean                       Recreate Git repo before import if it exists
-        --cron                        Produce minimal output only if new revisions loaded or error happened
-        --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format)
-    -h, --help                        Prints help information
-        --no-clean-closed-branches    Do not clean closed Mercurial branches
-        --source-pull                 Pull source Mercurial repository before import
-        --target-pull                 Pull target Git repository before push
-        --target-push                 Push target Git repository after successful import
-    -V, --version                     Prints version information
-        --verify                      Compares resulting Git repo with Mercurial
-
-OPTIONS:
-    -a, --authors <authors>                            Authors remapping in toml format
-    -c, --config <config>                              Repository configuration in toml format
-        --git-active-branches <git-active-branches>    Git maximum number of branches to maintain active at once
-        --limit-high <limit-high>                      Limit high revision to import
-        --log <log>
-            Log file. If present - additional log info would be printed to this file
-
-
-ARGS:
-    <hg-repo>     The Mercurial repo for import to git
-    <git-repo>    The Git repo to import to. Creates repo if it does not exist. Otherwise saved state must exist
-
+{{ exec "hg-git-fast-import single --help" }}
 ```
 
 Import of multiple repositories:
 
 ```bash
 $ hg-git-fast-import multi --help
-hg-git-fast-import-multi 1.3.8
-Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
-
-USAGE:
-    hg-git-fast-import multi [FLAGS] [OPTIONS] --config <config>
-
-FLAGS:
-        --clean                       Recreate Git repo before import if it exists
-        --cron                        Produce minimal output only if new revisions loaded or error happened
-        --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format)
-    -h, --help                        Prints help information
-        --no-clean-closed-branches    Do not clean closed Mercurial branches
-        --source-pull                 Pull source Mercurial repository before import
-        --target-pull                 Pull target Git repository before push
-        --target-push                 Push target Git repository after successful import
-    -V, --version                     Prints version information
-        --verify                      Compares resulting Git repo with Mercurial
-
-OPTIONS:
-    -a, --authors <authors>                            Authors remapping in toml format
-    -c, --config <config>                              Repositories configuration in toml format
-        --git-active-branches <git-active-branches>    Git maximum number of branches to maintain active at once
-        --log <log>
-            Log file. If present - additional log info would be printed to this file
-
-
+{{ exec "hg-git-fast-import multi --help" }}
 ```
 
 Rebuild saved state of repo:
 
 ```bash
 $ hg-git-fast-import build-marks --help
-hg-git-fast-import-build-marks 1.3.8
-Rebuilds saved state of repo
-
-USAGE:
-    hg-git-fast-import build-marks [FLAGS] [OPTIONS] <hg-repo> <git-repo>
-
-FLAGS:
-    -h, --help         Prints help information
-        --no-backup    Do not backup old marks
-    -V, --version      Prints version information
-
-OPTIONS:
-    -a, --authors <authors>    Authors remapping in toml format
-    -o, --offset <offset>      Offset for git fast-import marks in Git repository. Optional, default is 0
-
-ARGS:
-    <hg-repo>     The Mercurial repo which was imported to git
-    <git-repo>    The Git repo to save state to. Existing saved state would be updated with actual state
-
+{{ exec "hg-git-fast-import build-marks --help" }}
 ```
 
 ## Configuration syntax
