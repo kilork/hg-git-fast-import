@@ -102,7 +102,7 @@ fn export_repository(
     verify: bool,
     git_active_branches: Option<usize>,
 ) -> Result<(), ErrorKind> {
-    let path_hg = construct_path(&config_path, &repo.path_hg);
+    let path_hg = construct_path(config_path, &repo.path_hg);
 
     info!("Reading repo: {:?}", repo.path_hg);
     let mercurial_repo = match MercurialRepo::open_with_pull(&path_hg, &repo.config, env) {
@@ -126,11 +126,11 @@ fn export_repository(
 
     let offset = repo.config.offset.unwrap_or(0);
 
-    let path_git = construct_path(&config_path, &repo.path_git);
+    let path_git = construct_path(config_path, &repo.path_git);
 
     let mut git_repo = GitTargetRepository::open(path_git);
 
-    git_repo.set_env(&env);
+    git_repo.set_env(env);
 
     let mut errors = None;
     let mut counter: usize = 0;
@@ -147,7 +147,7 @@ fn export_repository(
             (0, 0)
         };
 
-        let mut brmap = repo.config.branches.clone().unwrap_or_else(HashMap::new);
+        let mut brmap = repo.config.branches.clone().unwrap_or_default();
 
         info!(
             "Exporting commits from repo: {:?} from {} to {} offset {:?}",

@@ -7,11 +7,11 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::path::PathBuf;
 
-use tracing::{debug, error, info};
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::process::{Child, Command, ExitStatus, Stdio};
+use tracing::{debug, error, info};
 
 pub struct StdoutTargetRepository<'a> {
     stdoutlock: std::io::StdoutLock<'a>,
@@ -112,8 +112,8 @@ impl<'a> GitTargetRepository<'a> {
     where
         F: FnMut(&mut Command) -> &mut Command,
     {
-        self.git_cmd_status(|mut cmd| {
-            f(&mut cmd);
+        self.git_cmd_status(|cmd| {
+            f(cmd);
             if quiet {
                 cmd.arg("--quiet");
             }
@@ -171,7 +171,7 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
         }
 
         let mut git = Command::new("git");
-        let mut git_cmd = git.args(&[
+        let mut git_cmd = git.args([
             "fast-import",
             "--export-marks=.git/hg-git-fast-import.marks",
             "--import-marks-if-exists=.git/hg-git-fast-import.marks",
@@ -282,7 +282,7 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
             verified_repo, path
         );
         let status = Command::new("diff")
-            .args(&[
+            .args([
                 "-ur",
                 "--exclude=.hg",
                 "--exclude=.idea",
@@ -311,7 +311,7 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
         info!("Saving state to Git repo: {}", path.to_str().unwrap());
         let saved_state_path = self.get_saved_state_path();
         let toml = toml::to_string(&state).unwrap();
-        let mut f = File::create(&saved_state_path)?;
+        let mut f = File::create(saved_state_path)?;
         f.write_all(toml.as_bytes())?;
         Ok(())
     }
@@ -338,7 +338,7 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
     fn remote_add(&self, name: &str, url: &str) -> Result<(), TargetRepositoryError> {
         debug!("git remote add {} {}", name, url);
         Command::new("git")
-            .args(&["remote", "add", name, url])
+            .args(["remote", "add", name, url])
             .current_dir(&self.path)
             .status()?;
         Ok(())
@@ -347,7 +347,7 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
     fn checkout(&self, branch: &str) -> Result<(), TargetRepositoryError> {
         debug!("git checkout -B {}", branch);
         Command::new("git")
-            .args(&["checkout", "-B", branch])
+            .args(["checkout", "-B", branch])
             .current_dir(&self.path)
             .status()?;
         Ok(())
@@ -359,7 +359,7 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
             branches.join(" ")
         );
         Command::new("git")
-            .args(&["merge", "-n", "--allow-unrelated-histories", "--no-edit"])
+            .args(["merge", "-n", "--allow-unrelated-histories", "--no-edit"])
             .args(branches)
             .current_dir(&self.path)
             .status()?;
@@ -369,13 +369,13 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
     fn fetch_all(&self) -> Result<(), TargetRepositoryError> {
         debug!("git fetch -q --all");
         Command::new("git")
-            .args(&["fetch", "-q", "--all"])
+            .args(["fetch", "-q", "--all"])
             .current_dir(&self.path)
             .status()?;
 
         debug!("git fetch -q --tags");
         Command::new("git")
-            .args(&["fetch", "-q", "--tags"])
+            .args(["fetch", "-q", "--tags"])
             .current_dir(&self.path)
             .status()?;
         Ok(())

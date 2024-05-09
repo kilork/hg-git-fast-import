@@ -1,9 +1,7 @@
+use std::{path::Path, time::Instant};
+
 use indicatif::{HumanDuration, ProgressBar, ProgressStyle};
 use tracing::{debug, info};
-
-use std::collections::HashMap;
-use std::path::Path;
-use std::time::Instant;
 
 use crate::error::ErrorKind;
 
@@ -35,10 +33,7 @@ pub fn hg2git<P: AsRef<Path>>(
     };
 
     debug!("Checking saved state...");
-    let mut brmap = repository_config
-        .branches
-        .clone()
-        .unwrap_or_else(HashMap::new);
+    let mut brmap = repository_config.branches.clone().unwrap_or_default();
     let mut counter: usize = 0;
     let offset = repository_config.offset.unwrap_or(0);
 

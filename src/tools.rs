@@ -202,7 +202,7 @@ fn select_from_matching(
     index: usize,
     revision_header: &RevisionHeader,
 ) -> Result<Option<String>, ErrorKind> {
-    let indexes = find_matching_sha1_index(&rev, sha1s, git_repo)?;
+    let indexes = find_matching_sha1_index(rev, sha1s, git_repo)?;
 
     if indexes.len() == 1 {
         let removed = sha1s.remove(indexes[0]);
@@ -246,7 +246,7 @@ fn find_matching_sha1_index(
     let mut result = vec![];
 
     for (index, sha1) in sha1s.iter().enumerate() {
-        let mut git_cmd = git_repo.git_cmd(&["show", "-s", "--format=.%B.", &sha1]);
+        let mut git_cmd = git_repo.git_cmd(&["show", "-s", "--format=.%B.", sha1]);
         let git_output = git_cmd.output()?;
         if !git_output.status.success() {
             return Err(ErrorKind::Target(TargetRepositoryError::GitFailure(
@@ -283,11 +283,11 @@ fn load_git_revlog_lines(stdout: &[u8]) -> (HashMap<RevisionHeader, Vec<String>>
     let mut revlog = vec![];
     while let (Some(sha1), Some(date), Some(user)) = (lines.next(), lines.next(), lines.next()) {
         let revision_header = RevisionHeader {
-            user: to_string(&user),
-            date: to_str(&date).parse().unwrap(),
+            user: to_string(user),
+            date: to_str(date).parse().unwrap(),
         };
         let sha1s = result.entry(revision_header).or_default();
-        let sha1 = to_string(&sha1);
+        let sha1 = to_string(sha1);
         sha1s.push(sha1.clone());
         revlog.push(sha1);
     }

@@ -457,7 +457,7 @@ impl<'a> MercurialRepo<'a> {
     ) -> Result<MercurialRepo<'a>, ErrorKind> {
         if env.source_pull {
             let mut hg = Command::new("hg");
-            hg.args(&["pull", "-u"]);
+            hg.args(["pull", "-u"]);
 
             if env.cron {
                 hg.arg("-q");
@@ -505,7 +505,7 @@ impl<'a> MercurialRepo<'a> {
             static ref RE: Regex = Regex::new("([^<]+) ?(<[^>]*>)$").unwrap();
         }
 
-        let (name, email) = if let Some(caps) = RE.captures(&user) {
+        let (name, email) = if let Some(caps) = RE.captures(user) {
             (
                 caps.get(1).unwrap().as_str().trim_end(),
                 caps.get(2).unwrap().as_str(),
@@ -547,7 +547,7 @@ impl<'a> MercurialRepo<'a> {
                 closed = true;
             }
         }
-        let branch: String = std::str::from_utf8(branch.unwrap_or_else(|| b"master"))?.into();
+        let branch: String = std::str::from_utf8(branch.unwrap_or(b"master"))?.into();
 
         let branch = brmap.entry(branch.clone()).or_insert_with(|| {
             sanitize_branchname(
@@ -625,9 +625,9 @@ impl<'a> MercurialRepo<'a> {
                         prefix
                     )?;
                     output.write_all(&file.path)?;
-                    let data = file_content(&data);
+                    let data = file_content(data);
                     writeln!(output, "\ndata {}", data.len())?;
-                    output.write_all(&data[..])?;
+                    output.write_all(data)?;
                 }
                 _ => {
                     return Err(ErrorKind::WrongFileData(
@@ -692,7 +692,7 @@ fn sanitize_branchname(name: &str, prefix: Option<&String>, fix_branch_name: boo
     while let Some(&c) = chars.peek() {
         let c = match c {
             '\0'..=' ' | '~' | '^' | ':' | '\\' => '-',
-            '.' if last == Some('.') || last == None => '-',
+            '.' if last == Some('.') || last.is_none() => '-',
             c => c,
         };
         result.push(c);
