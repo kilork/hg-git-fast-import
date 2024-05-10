@@ -1,7 +1,5 @@
 # Mercurial to Git converter using git fast-import with multi repository import support
 
-[![Linux build status](https://travis-ci.org/kilork/hg-git-fast-import.svg)](https://travis-ci.org/kilork/hg-git-fast-import)
-[![Windows build status](https://ci.appveyor.com/api/projects/status/github/kilork/hg-git-fast-import?svg=true)](https://ci.appveyor.com/project/kilork/hg-git-fast-import)
 [![Crates.io](https://img.shields.io/crates/v/hg-git-fast-import.svg)](https://crates.io/crates/hg-git-fast-import)
 [![Packaging status](https://repology.org/badge/tiny-repos/hg-git-fast-import.svg)](https://repology.org/project/hg-git-fast-import/badges)
 [![hg-git-fast-import](https://snapcraft.io//hg-git-fast-import/badge.svg)](https://snapcraft.io/hg-git-fast-import)
@@ -49,7 +47,7 @@ With Snap (*):
 
 ```bash
 $ hg-git-fast-import --help
-hg-git-fast-import 1.3.8
+hg-git-fast-import 1.4.0
 
 USAGE:
     hg-git-fast-import <SUBCOMMAND>
@@ -70,7 +68,7 @@ Import of single repository:
 
 ```bash
 $ hg-git-fast-import single --help
-hg-git-fast-import-single 1.3.8
+hg-git-fast-import-single 1.4.0
 Exports single Mercurial repository to Git fast-import compatible format
 
 USAGE:
@@ -108,7 +106,7 @@ Import of multiple repositories:
 
 ```bash
 $ hg-git-fast-import multi --help
-hg-git-fast-import-multi 1.3.8
+hg-git-fast-import-multi 1.4.0
 Exports multiple Mercurial repositories to single Git repo in fast-import compatible format
 
 USAGE:
@@ -140,7 +138,7 @@ Rebuild saved state of repo:
 
 ```bash
 $ hg-git-fast-import build-marks --help
-hg-git-fast-import-build-marks 1.3.8
+hg-git-fast-import-build-marks 1.4.0
 Rebuilds saved state of repo
 
 USAGE:
