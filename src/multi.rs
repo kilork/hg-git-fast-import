@@ -43,10 +43,11 @@ pub fn multi2git<P: AsRef<Path>>(
 
     let git_repo = GitTargetRepository::open(&path_git);
 
-    let new_rerository = !path_git.exists();
+    let new_repository = !path_git.exists();
 
-    let remotes = if new_rerository {
-        git_repo.create_repo()?;
+    let default_branch = git_repo.git_config_default_branch()?;
+    let remotes = if new_repository {
+        git_repo.create_repo(&default_branch)?;
         HashSet::new()
     } else {
         git_repo.remote_list()?
@@ -72,7 +73,7 @@ pub fn multi2git<P: AsRef<Path>>(
                 merge
                     .entry(branch_to)
                     .or_insert_with(Vec::new)
-                    .push(format!("{}/{}", alias, branch_from));
+                    .push(format!("{alias}/{branch_from}"));
             }
         }
     }
@@ -82,7 +83,7 @@ pub fn multi2git<P: AsRef<Path>>(
     for (branch_to, branches_from) in merge {
         git_repo.checkout(branch_to)?;
 
-        if new_rerository {
+        if new_repository {
             for branch_from in branches_from {
                 git_repo.merge_unrelated(&[branch_from.as_ref()])?;
             }
@@ -135,7 +136,8 @@ fn export_repository(
     let mut errors = None;
     let mut counter: usize = 0;
     let from_tag = {
-        let (output, saved_state) = git_repo.start_import(git_active_branches)?;
+        let (output, saved_state, default_branch) =
+            git_repo.start_import(git_active_branches, repo.config.default_branch())?;
 
         let (from, from_tag) = if let Some(saved_state) = saved_state.as_ref() {
             match saved_state {
@@ -169,7 +171,13 @@ fn export_repository(
                 progress_bar.set_message(format!("{:6}/{}", changeset.revision.0, to));
             }
 
-            match mercurial_repo.export_commit(&mut changeset, counter, &mut brmap, output) {
+            match mercurial_repo.export_commit(
+                &mut changeset,
+                counter,
+                &mut brmap,
+                output,
+                &default_branch,
+            ) {
                 Ok(progress) => counter = progress,
                 x => {
                     errors = Some((x, changeset.revision.0));

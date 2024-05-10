@@ -18,6 +18,13 @@ pub struct RepositoryConfig {
     pub tag_prefix: Option<String>,
     #[serde(default)]
     pub prefix_default_branch: bool,
+    pub default_branch: Option<String>,
+}
+
+impl RepositoryConfig {
+    pub fn default_branch(&self) -> Option<&str> {
+        self.default_branch.as_deref()
+    }
 }
 
 impl Default for RepositoryConfig {
@@ -32,6 +39,7 @@ impl Default for RepositoryConfig {
             branch_prefix: None,
             tag_prefix: None,
             prefix_default_branch: false,
+            default_branch: None,
         }
     }
 }
@@ -50,6 +58,13 @@ pub struct PathRepositoryConfig {
 pub struct MultiConfig {
     pub path_git: PathBuf,
     pub repositories: Vec<PathRepositoryConfig>,
+    default_branch: Option<String>,
+}
+
+impl MultiConfig {
+    pub fn default_branch(&self) -> Option<&str> {
+        self.default_branch.as_deref()
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -100,6 +115,7 @@ mod tests {
                     .into_iter()
                     .collect()
                 ),
+                default_branch: Some("main".into()),
                 ..Default::default()
             }
         )
@@ -114,6 +130,7 @@ mod tests {
             result,
             super::MultiConfig {
                 path_git: "000_git".into(),
+                default_branch: Some("main".into()),
                 repositories: vec![
                     super::PathRepositoryConfig {
                         path_hg: "001_hg".into(),

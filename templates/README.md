@@ -144,6 +144,7 @@ path_prefix = 'prefix1'
 tag_prefix = 'prefix2-'
 branch_prefix = 'prefix3-'
 prefix_default_branch = true
+default_branch = 'main'
 
 # Same as authors section in single mode, but for this child repository.
 [repositories.config.authors]

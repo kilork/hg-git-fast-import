@@ -39,7 +39,8 @@ pub fn hg2git<P: AsRef<Path>>(
 
     let mut errors = None;
     let from_tag = {
-        let (output, saved_state) = target.start_import(git_active_branches)?;
+        let (output, saved_state, default_branch) =
+            target.start_import(git_active_branches, repository_config.default_branch())?;
 
         let (from, from_tag) = if let Some(saved_state) = saved_state.as_ref() {
             match saved_state {
@@ -68,7 +69,7 @@ pub fn hg2git<P: AsRef<Path>>(
                 progress_bar.set_message(format!("{:6}/{}", changeset.revision.0, to));
             }
 
-            match repo.export_commit(&mut changeset, counter, &mut brmap, output) {
+            match repo.export_commit(&mut changeset, counter, &mut brmap, output, &default_branch) {
                 Ok(progress) => counter = progress,
                 x => {
                     errors = Some((x, changeset.revision.0));

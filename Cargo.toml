@@ -14,6 +14,9 @@ repository = "https://github.com/kilork/hg-git-fast-import"
 rust-version = "1.78"
 version = "1.3.8"
 
+[lib]
+doctest = false
+
 [features]
 jemalloc = ["jemallocator"]
 
