@@ -1,7 +1,5 @@
 # Mercurial to Git converter using git fast-import with multi repository import support
 
-[![Linux build status](https://travis-ci.org/kilork/hg-git-fast-import.svg)](https://travis-ci.org/kilork/hg-git-fast-import)
-[![Windows build status](https://ci.appveyor.com/api/projects/status/github/kilork/hg-git-fast-import?svg=true)](https://ci.appveyor.com/project/kilork/hg-git-fast-import)
 [![Crates.io](https://img.shields.io/crates/v/hg-git-fast-import.svg)](https://crates.io/crates/hg-git-fast-import)
 [![Packaging status](https://repology.org/badge/tiny-repos/hg-git-fast-import.svg)](https://repology.org/project/hg-git-fast-import/badges)
 [![hg-git-fast-import](https://snapcraft.io//hg-git-fast-import/badge.svg)](https://snapcraft.io/hg-git-fast-import)

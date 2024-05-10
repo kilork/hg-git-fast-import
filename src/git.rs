@@ -1,16 +1,16 @@
-use super::read_file;
-use super::{
-    config::RepositorySavedState, env::Environment, TargetRepository, TargetRepositoryError,
+use std::{
+    collections::HashSet,
+    fs::{self, File},
+    io::prelude::Write,
+    path::{Path, PathBuf},
+    process::{Child, Command, ExitStatus, Stdio},
 };
 
-use std::collections::HashSet;
-use std::path::Path;
-use std::path::PathBuf;
+use super::{
+    config::RepositorySavedState, env::Environment, read_file, TargetRepository,
+    TargetRepositoryError,
+};
 
-use std::fs;
-use std::fs::File;
-use std::io::prelude::*;
-use std::process::{Child, Command, ExitStatus, Stdio};
 use tracing::{debug, error, info};
 
 pub const DEFAULT_BRANCH: &str = "master";
