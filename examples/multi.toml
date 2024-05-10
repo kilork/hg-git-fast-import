@@ -1,5 +1,7 @@
-# Path to target git repository.
+# Path to target master git repository.
 path_git = "000_git"
+# Default branch in master repo. Optional.
+default_branch = "main"
 
 # This is subsection with list of repositories to be aggregated into single repo.
 # Each subsection start like this (see toml format for arrays).

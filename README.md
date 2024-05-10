@@ -91,6 +91,7 @@ FLAGS:
 OPTIONS:
     -a, --authors <authors>                            Authors remapping in toml format
     -c, --config <config>                              Repository configuration in toml format
+        --default-branch <default-branch>              Default branch to use
         --git-active-branches <git-active-branches>    Git maximum number of branches to maintain active at once
         --limit-high <limit-high>                      Limit high revision to import
         --log <log>
@@ -231,6 +232,7 @@ path_prefix = 'prefix1'
 tag_prefix = 'prefix2-'
 branch_prefix = 'prefix3-'
 prefix_default_branch = true
+default_branch = 'main'
 
 # Same as authors section in single mode, but for this child repository.
 [repositories.config.authors]

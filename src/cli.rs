@@ -18,6 +18,9 @@ pub enum Cli {
         /// Limit high revision to import.
         #[structopt(name = "limit-high", long)]
         limit_high: Option<usize>,
+        /// Default branch to use.
+        #[structopt(name = "default-branch", long)]
+        default_branch: Option<String>,
         #[structopt(flatten)]
         common: Common,
     },

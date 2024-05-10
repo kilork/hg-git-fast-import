@@ -39,14 +39,20 @@ fn main() -> Result<()> {
             git_repo,
             config,
             limit_high,
+            ref default_branch,
             common,
         } => {
-            setup_logger(common.log.as_ref())?;
+            let _logger_guard = setup_logger(common.log.as_ref())?;
 
             let env = load_environment(&common)?;
 
-            let repository_config: Result<RepositoryConfig, anyhow::Error> = config.map_or_else(
-                || Ok(RepositoryConfig::default()),
+            let repository_config = config.map_or_else(
+                || -> Result<_, anyhow::Error> {
+                    Ok(RepositoryConfig {
+                        default_branch: default_branch.clone(),
+                        ..RepositoryConfig::default()
+                    })
+                },
                 |x| {
                     info!("Loading config");
                     let config_str =
@@ -57,10 +63,13 @@ fn main() -> Result<()> {
                     if limit_high.is_some() {
                         config.limit_high = limit_high;
                     }
+                    if default_branch.is_some() {
+                        config.default_branch.clone_from(default_branch);
+                    }
                     Ok(config)
                 },
-            );
-            let repository_config = repository_config?;
+            )?;
+
             if let Some(git_repo) = git_repo {
                 let mut git_target_repository = GitTargetRepository::open(git_repo);
 
@@ -96,7 +105,7 @@ fn main() -> Result<()> {
             }
         }
         Multi { config, common } => {
-            setup_logger(common.log.as_ref())?;
+            let _logger_guard = setup_logger(common.log.as_ref())?;
 
             let env = load_environment(&common)?;
 
@@ -135,27 +144,22 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn setup_logger(log: Option<&impl AsRef<Path>>) -> Result<()> {
-    let (logging_backend, _logging_guard) = if let Some(log) = log.as_ref() {
+fn setup_logger(log: Option<&impl AsRef<Path>>) -> Result<Option<WorkerGuard>> {
+    let (logging_backend, logging_guard) = if let Some(log) = log.as_ref() {
         setup_file_logger(log)?
     } else {
-        setup_console_logger()?
+        return Ok(None);
     };
     tracing_subscriber::fmt()
         .with_writer(logging_backend)
         .init();
 
-    Ok(())
+    Ok(Some(logging_guard))
 }
 
 fn setup_file_logger(log: impl AsRef<Path>) -> Result<(NonBlocking, WorkerGuard), anyhow::Error> {
     let file_appender = std::fs::File::create(log.as_ref())?;
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-    Ok((non_blocking, guard))
-}
-
-fn setup_console_logger() -> Result<(NonBlocking, WorkerGuard), anyhow::Error> {
-    let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
     Ok((non_blocking, guard))
 }
 

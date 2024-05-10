@@ -13,6 +13,8 @@ use std::io::prelude::*;
 use std::process::{Child, Command, ExitStatus, Stdio};
 use tracing::{debug, error, info};
 
+pub const DEFAULT_BRANCH: &str = "master";
+
 pub struct StdoutTargetRepository<'a> {
     stdoutlock: std::io::StdoutLock<'a>,
 }
@@ -27,8 +29,9 @@ impl<'a> TargetRepository for StdoutTargetRepository<'a> {
     fn start_import(
         &mut self,
         _git_active_branches: Option<usize>,
-    ) -> Result<(&mut dyn Write, Option<RepositorySavedState>), TargetRepositoryError> {
-        Ok((&mut self.stdoutlock, None))
+        _default_branch: Option<&str>,
+    ) -> Result<(&mut dyn Write, Option<RepositorySavedState>, String), TargetRepositoryError> {
+        Ok((&mut self.stdoutlock, None, DEFAULT_BRANCH.to_string()))
     }
     fn finish(&mut self) -> Result<(), TargetRepositoryError> {
         Ok(())
@@ -66,13 +69,16 @@ impl<'a> GitTargetRepository<'a> {
         saved_state
     }
 
-    pub fn create_repo(&self) -> Result<(), TargetRepositoryError> {
+    pub fn create_repo(&self, default_branch: &str) -> Result<(), TargetRepositoryError> {
         let path = &self.path;
         info!("Creating new dir");
         fs::create_dir_all(path)?;
 
         info!("Init Git repo");
-        let status = Command::new("git").arg("init").current_dir(path).status()?;
+        let status = Command::new("git")
+            .args(["init", "-b", default_branch])
+            .current_dir(path)
+            .status()?;
         if !status.success() {
             error!("Cannot init Git repo");
             return Err(TargetRepositoryError::CannotInitRepo(status));
@@ -85,6 +91,19 @@ impl<'a> GitTargetRepository<'a> {
         info!("New Git repo initialization done");
 
         Ok(())
+    }
+
+    pub fn git_config_default_branch(&self) -> Result<String, TargetRepositoryError> {
+        let output = Command::new("git")
+            .args(["config", "--global", "init.defaultBranch"])
+            .output()?;
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        let default_branch = output_str.trim();
+        Ok(if !default_branch.is_empty() {
+            default_branch.into()
+        } else {
+            DEFAULT_BRANCH.into()
+        })
     }
 
     pub fn git_cmd(&self, args: &[&str]) -> Command {
@@ -134,7 +153,8 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
     fn start_import(
         &mut self,
         git_active_branches: Option<usize>,
-    ) -> Result<(&mut dyn Write, Option<RepositorySavedState>), TargetRepositoryError> {
+        default_branch: Option<&str>,
+    ) -> Result<(&mut dyn Write, Option<RepositorySavedState>, String), TargetRepositoryError> {
         let path = &self.path;
         let saved_state;
         info!("Checking Git repo: {}", path.to_str().unwrap());
@@ -145,6 +165,11 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
             std::fs::remove_dir_all(path)?;
         }
 
+        let default_branch = if let Some(default_branch) = default_branch {
+            default_branch.to_string()
+        } else {
+            self.git_config_default_branch()?
+        };
         if path.exists() {
             if path.is_dir() {
                 info!("Path exists, checking for saved state");
@@ -166,7 +191,7 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
                 return Err(TargetRepositoryError::IsNotDir);
             }
         } else {
-            self.create_repo()?;
+            self.create_repo(&default_branch)?;
             saved_state = None;
         }
 
@@ -188,6 +213,7 @@ impl<'a> TargetRepository for GitTargetRepository<'a> {
                 .map(|x| x.stdin.as_mut().unwrap())
                 .unwrap(),
             saved_state,
+            default_branch,
         ))
     }
 

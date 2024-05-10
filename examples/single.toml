@@ -15,6 +15,8 @@ branch_prefix = 'prefix3-'
 # This behavior can be changed by specifying this as true.
 # Optional.
 prefix_default_branch = false
+# Default branch in repo. Optional.
+default_branch = "main"
 
 # Mapping between authors in Mercurial and authors in Git.
 # Required mainly because of Git asks for particular format "Somename <email@address>".
