@@ -30,8 +30,8 @@ use self::config::RepositorySavedState;
 pub use error::ErrorKind;
 
 use hg_parser::{
-    file_content, Changeset, FileType, ManifestEntryDetails, MercurialRepository, Revision,
-    SharedMercurialRepository,
+    file_content, Changeset, FileType, ManifestEntryDetails, MercurialRepository,
+    MercurialRepositoryOptions, Revision, SharedMercurialRepository,
 };
 
 pub fn read_file(filename: impl AsRef<Path>) -> io::Result<String> {
@@ -141,11 +141,17 @@ impl<'a> MercurialRepo<'a> {
     pub fn open<P: AsRef<Path>>(
         path: P,
         config: &'a config::RepositoryConfig,
+        ignore_unknown_requirements: bool,
         env: &'a env::Environment,
     ) -> Result<MercurialRepo<'a>, ErrorKind> {
         Ok(Self {
             path: path.as_ref().to_path_buf(),
-            inner: SharedMercurialRepository::new(MercurialRepository::open(path)?),
+            inner: SharedMercurialRepository::new(MercurialRepository::open_with_options(
+                path,
+                MercurialRepositoryOptions {
+                    ignore_unknown_requirements,
+                },
+            )?),
             config,
             env,
         })
@@ -156,6 +162,7 @@ impl<'a> MercurialRepo<'a> {
     pub fn open_with_pull<P: AsRef<Path>>(
         path: P,
         config: &'a config::RepositoryConfig,
+        ignore_unknown_requirements: bool,
         env: &'a env::Environment,
     ) -> Result<MercurialRepo<'a>, ErrorKind> {
         if env.source_pull {
@@ -176,7 +183,7 @@ impl<'a> MercurialRepo<'a> {
             }
         }
 
-        Self::open(path, config, env)
+        Self::open(path, config, ignore_unknown_requirements, env)
     }
 
     fn path(&self) -> &Path {

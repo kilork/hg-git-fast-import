@@ -33,7 +33,7 @@ regex = "1"
 
 toml = "0.8"
 
-hg-parser = "0.8"
+hg-parser = "0.9"
 ordered-parallel-iterator = "0.2"
 structopt = "0.3"
 
