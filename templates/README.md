@@ -191,7 +191,7 @@ See [authors.toml](examples/authors.toml).
 
 ## Requirements
 
-- Rust 1.78 or later (2018 edition)
+- Rust 1.78 or later (2021 edition)
 - Git 2.19 (optional, if you use `single` mode without repo creation)
 - Diff 2.8 (optional, if you do not use `--verify`)
 - Mercurial 4.8 (optional, if you do not need delta load of revisions)
