@@ -26,6 +26,7 @@ fn construct_path<P: AsRef<Path>>(config_path: &Option<P>, target: P) -> PathBuf
 pub fn multi2git<P: AsRef<Path>>(
     verify: bool,
     git_active_branches: Option<usize>,
+    ignore_unknown_requirements: bool,
     env: &env::Environment,
     config_filename: P,
     multi_config: &config::MultiConfig,
@@ -36,7 +37,14 @@ pub fn multi2git<P: AsRef<Path>>(
     let config_path = config_filename.as_ref().parent();
 
     for repo in &multi_config.repositories {
-        export_repository(&config_path, repo, env, verify, git_active_branches)?;
+        export_repository(
+            &config_path,
+            repo,
+            env,
+            verify,
+            git_active_branches,
+            ignore_unknown_requirements,
+        )?;
     }
 
     let path_git = construct_path(&config_path, &multi_config.path_git);
@@ -102,11 +110,17 @@ fn export_repository(
     env: &env::Environment,
     verify: bool,
     git_active_branches: Option<usize>,
+    ignore_unknown_requirements: bool,
 ) -> Result<(), ErrorKind> {
     let path_hg = construct_path(config_path, &repo.path_hg);
 
     info!("Reading repo: {:?}", repo.path_hg);
-    let mercurial_repo = match MercurialRepo::open_with_pull(&path_hg, &repo.config, env) {
+    let mercurial_repo = match MercurialRepo::open_with_pull(
+        &path_hg,
+        &repo.config,
+        ignore_unknown_requirements,
+        env,
+    ) {
         Ok(repo) => repo,
         Err(ErrorKind::HgParserFailure(fail)) => panic!("Cannot open {:?}: {:?}", path_hg, fail),
         Err(other) => panic!("Cannot open {:?}: {:?}", path_hg, other),

@@ -2,22 +2,23 @@
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-use std::collections::HashMap;
-use std::io;
-use std::path::Path;
-use std::time::Instant;
+use std::{collections::HashMap, io, path::Path, time::Instant};
 
 use anyhow::{Context, Result};
 use indicatif::HumanDuration;
-use tracing::info;
-
 use structopt::StructOpt;
-
-use hg_git_fast_import::config::RepositoryConfig;
-use hg_git_fast_import::env::Environment;
-use hg_git_fast_import::git::{GitTargetRepository, StdoutTargetRepository};
-use hg_git_fast_import::{multi::multi2git, read_file, single::hg2git, tools::build_marks};
+use tracing::info;
 use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
+
+use hg_git_fast_import::{
+    config::RepositoryConfig,
+    env::Environment,
+    git::{GitTargetRepository, StdoutTargetRepository},
+    multi::multi2git,
+    read_file,
+    single::hg2git,
+    tools::build_marks,
+};
 
 mod cli;
 
@@ -79,6 +80,7 @@ fn main() -> Result<()> {
                     hg_repo,
                     common.verify,
                     common.git_active_branches,
+                    common.ignore_unknown_requirements,
                     &mut git_target_repository,
                     &env,
                     &repository_config,
@@ -91,6 +93,7 @@ fn main() -> Result<()> {
                     hg_repo,
                     common.verify,
                     common.git_active_branches,
+                    common.ignore_unknown_requirements,
                     &mut stdout_target,
                     &env,
                     &repository_config,
@@ -118,6 +121,7 @@ fn main() -> Result<()> {
             multi2git(
                 common.verify,
                 common.git_active_branches,
+                common.ignore_unknown_requirements,
                 &env,
                 &config,
                 &multi_config,

@@ -105,4 +105,7 @@ pub struct Common {
     /// Fix wrong Mercurial branch names (not compatible with git ref format).
     #[structopt(name = "fix-wrong-branch-names", long)]
     pub fix_wrong_branchname: bool,
+    /// Ignore unknown requirements.
+    #[structopt(name = "ignore-unknown-requirements", long, short)]
+    pub ignore_unknown_requirements: bool,
 }

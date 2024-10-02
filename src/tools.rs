@@ -211,7 +211,7 @@ fn select_from_matching(
     }
 
     let select = dialoguer::Select::new()
-        .with_prompt(&format!(
+        .with_prompt(format!(
             "Select sha1 to set mark :{} (pos: {}) {} {}",
             revision_mark, index, revision_header.user, revision_header.date
         ))

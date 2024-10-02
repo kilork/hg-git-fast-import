@@ -4,7 +4,7 @@ categories = ["command-line-utilities"]
 description = """
 A utility to import single and multiple Mercurial repositories to Git.
 """
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/kilork/hg-git-fast-import"
 keywords = ["cli", "hg", "git", "mercurial", "convert"]
 license = "Unlicense OR MIT"
@@ -33,7 +33,7 @@ regex = "1"
 
 toml = "0.8"
 
-hg-parser = "0.8"
+hg-parser = "0.9"
 ordered-parallel-iterator = "0.2"
 structopt = "0.3"
 

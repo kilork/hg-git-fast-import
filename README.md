@@ -75,16 +75,17 @@ USAGE:
     hg-git-fast-import single [FLAGS] [OPTIONS] <hg-repo> [git-repo]
 
 FLAGS:
-        --clean                       Recreate Git repo before import if it exists
-        --cron                        Produce minimal output only if new revisions loaded or error happened
-        --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format)
-    -h, --help                        Prints help information
-        --no-clean-closed-branches    Do not clean closed Mercurial branches
-        --source-pull                 Pull source Mercurial repository before import
-        --target-pull                 Pull target Git repository before push
-        --target-push                 Push target Git repository after successful import
-    -V, --version                     Prints version information
-        --verify                      Compares resulting Git repo with Mercurial
+        --clean                          Recreate Git repo before import if it exists
+        --cron                           Produce minimal output only if new revisions loaded or error happened
+        --fix-wrong-branch-names         Fix wrong Mercurial branch names (not compatible with git ref format)
+    -h, --help                           Prints help information
+    -i, --ignore-unknown-requirements    Ignore unknown requirements
+        --no-clean-closed-branches       Do not clean closed Mercurial branches
+        --source-pull                    Pull source Mercurial repository before import
+        --target-pull                    Pull target Git repository before push
+        --target-push                    Push target Git repository after successful import
+    -V, --version                        Prints version information
+        --verify                         Compares resulting Git repo with Mercurial
 
 OPTIONS:
     -a, --authors <authors>                            Authors remapping in toml format
@@ -113,16 +114,17 @@ USAGE:
     hg-git-fast-import multi [FLAGS] [OPTIONS] --config <config>
 
 FLAGS:
-        --clean                       Recreate Git repo before import if it exists
-        --cron                        Produce minimal output only if new revisions loaded or error happened
-        --fix-wrong-branch-names      Fix wrong Mercurial branch names (not compatible with git ref format)
-    -h, --help                        Prints help information
-        --no-clean-closed-branches    Do not clean closed Mercurial branches
-        --source-pull                 Pull source Mercurial repository before import
-        --target-pull                 Pull target Git repository before push
-        --target-push                 Push target Git repository after successful import
-    -V, --version                     Prints version information
-        --verify                      Compares resulting Git repo with Mercurial
+        --clean                          Recreate Git repo before import if it exists
+        --cron                           Produce minimal output only if new revisions loaded or error happened
+        --fix-wrong-branch-names         Fix wrong Mercurial branch names (not compatible with git ref format)
+    -h, --help                           Prints help information
+    -i, --ignore-unknown-requirements    Ignore unknown requirements
+        --no-clean-closed-branches       Do not clean closed Mercurial branches
+        --source-pull                    Pull source Mercurial repository before import
+        --target-pull                    Pull target Git repository before push
+        --target-push                    Push target Git repository after successful import
+    -V, --version                        Prints version information
+        --verify                         Compares resulting Git repo with Mercurial
 
 OPTIONS:
     -a, --authors <authors>                            Authors remapping in toml format
@@ -279,7 +281,7 @@ See [authors.toml](examples/authors.toml).
 
 ## Requirements
 
-- Rust 1.78 or later (2018 edition)
+- Rust 1.78 or later (2021 edition)
 - Git 2.19 (optional, if you use `single` mode without repo creation)
 - Diff 2.8 (optional, if you do not use `--verify`)
 - Mercurial 4.8 (optional, if you do not need delta load of revisions)
